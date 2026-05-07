@@ -16,8 +16,8 @@
         "title": "Targum",
         "width": 680,
         "height": 420,
-        "minWidth": 500,
-        "minHeight": 360,
+        "minWidth": 400,
+        "minHeight": 240,
         "resizable": true,
         "visible": false,
         "center": true
