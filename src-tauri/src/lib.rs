@@ -4,7 +4,7 @@ mod translate;
 mod tray;
 
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 pub struct HotkeyState(pub Mutex<String>);
@@ -73,6 +73,7 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 window.hide().unwrap();
+                let _ = window.emit("window-hidden", ());
                 api.prevent_close();
             }
         })

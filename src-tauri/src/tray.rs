@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Emitter, Manager,
 };
 
 pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
@@ -24,6 +24,7 @@ pub fn setup_tray(app: &tauri::App) -> tauri::Result<()> {
                 if let Some(window) = app.get_webview_window("main") {
                     if window.is_visible().unwrap_or(false) {
                         window.hide().ok();
+                        window.emit("window-hidden", ()).ok();
                     } else {
                         window.show().ok();
                         window.set_focus().ok();

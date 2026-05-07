@@ -6,6 +6,8 @@ import { useHotkeyText } from './composables/useHotkeyText';
 import { useSpeech } from './composables/useSpeech';
 import { APP_LANGUAGES } from './i18n';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import LangSelect from './components/LangSelect.vue';
 
 const { t, locale } = useI18n();
@@ -169,6 +171,14 @@ const hotkeyError = ref('');
 
 onMounted(() => {
   invoke<string>('get_hotkey').then(h => { currentHotkey.value = h; });
+
+  listen('window-hidden', () => {
+    sourceText.value = '';
+  });
+
+  getCurrentWindow().onFocusChanged(({ payload: focused }) => {
+    if (focused) showSettings.value = false;
+  });
 });
 
 function startRecording() {
