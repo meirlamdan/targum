@@ -15,6 +15,9 @@ dist-ssr
 # Rust build artifacts
 src-tauri/target/
 
+# Claude Code internal settings
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
