@@ -6,6 +6,7 @@ import { useHotkeyText } from './composables/useHotkeyText';
 import { useSpeech } from './composables/useSpeech';
 import { APP_LANGUAGES } from './i18n';
 import { invoke } from '@tauri-apps/api/core';
+import LangSelect from './components/LangSelect.vue';
 
 const { t, locale } = useI18n();
 
@@ -212,17 +213,9 @@ function onHotkeyKeydown(e: KeyboardEvent) {
       <template v-if="!showSettings">
         <span class="app-title">{{ t('appTitle') }}</span>
         <div class="lang-row">
-          <select v-model="sourceLang" class="lang-select">
-            <option v-for="lang in SOURCE_LANGUAGES" :key="lang.code" :value="lang.code">
-              {{ lang.label }}
-            </option>
-          </select>
+          <LangSelect v-model="sourceLang" :options="SOURCE_LANGUAGES" />
           <button class="btn-swap" @click="swapLanguages" :disabled="!canSwap" :title="t('swapLanguages')">⇄</button>
-          <select v-model="targetLang" class="lang-select">
-            <option v-for="lang in LANGUAGES" :key="lang.code" :value="lang.code">
-              {{ lang.label }}
-            </option>
-          </select>
+          <LangSelect v-model="targetLang" :options="LANGUAGES" />
         </div>
         <div class="header-end">
           <select v-model="engine" class="lang-select">
@@ -255,11 +248,7 @@ function onHotkeyKeydown(e: KeyboardEvent) {
       <div class="settings-group">
         <div class="settings-row">
           <label class="settings-label" for="default-lang">{{ t('defaultLang') }}</label>
-          <select id="default-lang" v-model="targetLang" class="lang-select">
-            <option v-for="lang in LANGUAGES" :key="lang.code" :value="lang.code">
-              {{ lang.label }}
-            </option>
-          </select>
+          <LangSelect v-model="targetLang" :options="LANGUAGES" />
         </div>
         <div class="settings-row settings-row-bordered">
           <label class="settings-label" for="app-lang">{{ t('appLanguage') }}</label>
