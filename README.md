@@ -1,17 +1,17 @@
 # Targum — Desktop Translation App
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
-![Platform: Windows](https://img.shields.io/badge/Platform-Windows-lightgrey.svg)
+![Platform: Windows & macOS](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS-lightgrey.svg)
 
-Targum is a lightweight Windows desktop app for instant text translation. Select any text anywhere on your screen, press a global hotkey, and get the translation in a floating window — without switching apps.
+Targum is a lightweight desktop app for instant text translation. Select any text anywhere on your screen, press a global hotkey, and get the translation in a floating window — without switching apps.
 
 ## Features
 
-- **Global hotkey** — Select text in any app, press `Ctrl+Shift+T` to translate instantly (configurable)
+- **Global hotkey** — Select text in any app, press `Ctrl+Shift+T` (Windows) or `Cmd+Shift+T` (macOS) to translate instantly (configurable)
 - **Two translation engines** — Google Translate and Bing Translator, toggle per-session
 - **Text-to-speech** — Listen to the translation with word-by-word highlighting; US/British English accent toggle
-- **8 languages** — Hebrew, English, French, Arabic, Spanish, Russian, German, Chinese
-- **RTL support** — Full right-to-left rendering for Hebrew and Arabic
+- **20 languages** — See full list below
+- **RTL support** — Full right-to-left rendering for Hebrew, Arabic, and Persian
 - **System tray** — Lives in the tray, press the hotkey or click the tray icon to open
 - **UI localization** — Interface available in English and Hebrew
 
@@ -21,7 +21,7 @@ Targum is a lightweight Windows desktop app for instant text translation. Select
 
 ## Requirements
 
-- Windows 10/11
+- Windows 10/11 or macOS
 - [Node.js](https://nodejs.org/) (v18+)
 - [Rust](https://rustup.rs/) (stable)
 
@@ -42,25 +42,22 @@ The installer will be output to `src-tauri/target/release/bundle/`.
 
 ## Supported Languages
 
-| Language | Code |
-|----------|------|
-| Hebrew | he |
-| English | en |
-| French | fr |
-| Arabic | ar |
-| Spanish | es |
-| Russian | ru |
-| German | de |
-| Chinese | zh-CN |
+| Language | Code | | Language | Code |
+|----------|------|-|----------|------|
+| Hebrew | he | | Portuguese | pt |
+| English | en | | Italian | it |
+| French | fr | | Japanese | ja |
+| Arabic | ar | | Korean | ko |
+| Spanish | es | | Dutch | nl |
+| Russian | ru | | Polish | pl |
+| German | de | | Turkish | tr |
+| Chinese | zh | | Ukrainian | uk |
+| Persian | fa | | Hindi | hi |
+| Swedish | sv | | Romanian | ro |
 
 ## Hotkey Configuration
 
-The default hotkey is `Ctrl+Shift+T`. You can change it in the settings panel inside the app. The new hotkey is saved automatically and persists across restarts.
-
-## Notes
-
-- **Windows only** — The clipboard capture mechanism uses Win32 APIs (`GetForegroundWindow`, `SendInput`). Other platforms are not supported without significant changes.
-- No API keys required — uses public translation endpoints.
+The default hotkey is `Ctrl+Shift+T` on Windows and `Cmd+Shift+T` on macOS. You can change it in the settings panel inside the app. The new hotkey is saved automatically and persists across restarts.
 
 ## License
 

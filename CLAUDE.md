@@ -58,7 +58,7 @@ No test or lint scripts are configured yet.
 ## Key Details
 
 - **App name:** Targum (`com.meir.targum`). Product name is "Targum" in `tauri.conf.json`.
-- **Languages:** Hebrew, English, French, Arabic, Spanish, Russian, German, Chinese — hardcoded in `App.vue`. RTL is applied for Hebrew and Arabic (and extended RTL set in `useSpeech.ts`).
+- **Languages:** 20 languages hardcoded in `App.vue`: Hebrew, English, French, Arabic, Spanish, Russian, German, Chinese, Portuguese, Italian, Japanese, Korean, Dutch, Polish, Turkish, Ukrainian, Persian, Hindi, Swedish, Romanian. RTL is applied for Hebrew, Arabic, and Persian.
 - **Translation engines:** Google (`translate.googleapis.com/translate_a/single`) and Bing (scrapes page for anti-abuse tokens before each request). Engine toggled per-session, persisted in localStorage.
 - **Text-to-speech:** `useSpeech.ts` wraps `SpeechSynthesisUtterance`. Supports US/British English accent toggle. Tracks word boundaries via `onboundary` for live word highlighting.
 - **Hotkey configuration:** User can record a new hotkey in the settings panel. `set_hotkey` Tauri command re-registers the shortcut and saves it via `config.rs`. `get_hotkey` reads the current value. Default: `Ctrl+Shift+T`.
@@ -66,5 +66,5 @@ No test or lint scripts are configured yet.
 - **Tray:** Left-click toggles visibility. Menu has "Open Translator" and "Quit".
 - **UI locale:** English and Hebrew, toggled in settings, persisted in localStorage.
 - **CSP:** `tauri.conf.json` allows `https://translate.googleapis.com`. Bing API calls go through Rust/reqwest (not subject to browser CSP). Any new external domains called from the frontend need to be added to CSP.
-- **Windows-only:** `selection.rs` uses `windows-sys` (`GetForegroundWindow`, `SendInput`). Hotkey capture will not work on other platforms without changes.
+- **Platform support:** Windows and macOS. `selection.rs` uses `windows-sys` on Windows and `core-graphics` on macOS (both under `#[cfg(target_os)]`). Linux is not supported.
 - **State persistence:** `targetLang`, `engine`, `appLocale`, `englishAccent` in localStorage; hotkey in Rust `config.json` via `app.path().app_config_dir()`.
