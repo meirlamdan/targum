@@ -16,7 +16,7 @@ export default {
   placeholder: 'Entrez le texte à traduire…',
   translating: 'Traduction en cours…',
   translationPlaceholder: 'La traduction apparaît ici…',
-  hintDesktop: 'Appuyez sur {key} n'importe où pour traduire le texte sélectionné',
+  hintDesktop: 'Appuyez sur {key} partout pour traduire le texte sélectionné',
   translationFailed: 'Échec de la traduction',
   engineGoogle: 'Google',
   engineBing: 'Bing',
