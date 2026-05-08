@@ -4,7 +4,14 @@ import he from './he'
 import ru from './ru'
 import fr from './fr'
 
-const savedLocale = localStorage.getItem('appLocale') ?? 'en'
+const SUPPORTED_LOCALES = ['en', 'he', 'ru', 'fr']
+
+function detectLocale(): string {
+  const systemLang = navigator.language.split('-')[0]
+  return SUPPORTED_LOCALES.includes(systemLang) ? systemLang : 'en'
+}
+
+const savedLocale = localStorage.getItem('appLocale') ?? detectLocale()
 
 export const i18n = createI18n({
   legacy: false,
