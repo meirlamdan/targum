@@ -19,13 +19,21 @@ Targum is a lightweight desktop app for instant text translation. Select any tex
 
 <!-- Add screenshot here -->
 
-## Requirements
+## Download & Install
 
-- Windows 10/11 or macOS
-- [Node.js](https://nodejs.org/) (v18+)
-- [Rust](https://rustup.rs/) (stable)
+Go to the [Releases](https://github.com/meirlamdan/targum/releases) page and download the latest version for your platform:
 
-## Getting Started
+| Platform | File |
+|----------|------|
+| Windows 10/11 | `Targum_x.x.x_x64-setup.exe` |
+| macOS (Apple Silicon) | `Targum_x.x.x_aarch64.dmg` |
+| macOS (Intel) | `Targum_x.x.x_x64.dmg` |
+
+No additional dependencies required.
+
+## Development
+
+**Requirements:** [Node.js](https://nodejs.org/) v18+, [Rust](https://rustup.rs/) stable
 
 ```bash
 # Install dependencies
