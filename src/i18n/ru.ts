@@ -18,8 +18,7 @@ export default {
   translationPlaceholder: 'Здесь появится перевод…',
   hintDesktop: 'Нажмите {key} где угодно, чтобы перевести выделенный текст',
   translationFailed: 'Ошибка перевода',
-  engineGoogle: 'Google',
-  engineBing: 'Bing',
+
   hotkey: 'Горячая клавиша',
   hotkeyRecord: 'Нажмите для записи',
   hotkeyRecording: 'Нажмите клавиши…',

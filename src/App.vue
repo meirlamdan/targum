@@ -46,6 +46,7 @@ const sourceText = ref('');
 const targetLang = ref(localStorage.getItem('targetLang') ?? 'he');
 const sourceLang = ref('auto');
 const engine = ref<'google' | 'bing'>((localStorage.getItem('translationEngine') as 'google' | 'bing') ?? 'google');
+const ENGINE_OPTIONS = [{ code: 'google', label: 'Google' }, { code: 'bing', label: 'Bing' }];
 const copied = ref(false);
 const showSettings = ref(false);
 const hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -228,10 +229,7 @@ function onHotkeyKeydown(e: KeyboardEvent) {
           <LangSelect v-model="targetLang" :options="LANGUAGES" />
         </div>
         <div class="header-end">
-          <select v-model="engine" class="lang-select">
-            <option value="google">{{ t('engineGoogle') }}</option>
-            <option value="bing">{{ t('engineBing') }}</option>
-          </select>
+          <LangSelect v-model="engine" :options="ENGINE_OPTIONS" small />
           <button class="btn-icon" @click="showSettings = true" :title="t('settings')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
@@ -706,10 +704,6 @@ kbd {
   justify-self: end;
 }
 
-.header-end .lang-select {
-  font-size: 0.75rem;
-  padding: 2px 4px;
-}
 
 .engine-toggle {
   display: flex;

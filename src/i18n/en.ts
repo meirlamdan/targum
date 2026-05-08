@@ -18,8 +18,7 @@ export default {
   translationPlaceholder: 'Translation appears here…',
   hintDesktop: 'Press {key} anywhere to translate selected text',
   translationFailed: 'Translation failed',
-  engineGoogle: 'Google',
-  engineBing: 'Bing',
+
   hotkey: 'Keyboard shortcut',
   hotkeyRecord: 'Click to record',
   hotkeyRecording: 'Press keys…',

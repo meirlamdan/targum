@@ -18,8 +18,7 @@ export default {
   translationPlaceholder: 'התרגום יופיע כאן…',
   hintDesktop: 'לחץ {key} בכל מקום לתרגום טקסט מסומן',
   translationFailed: 'התרגום נכשל',
-  engineGoogle: 'גוגל',
-  engineBing: 'בינג',
+
   hotkey: 'קיצור מקשים',
   hotkeyRecord: 'לחץ להקלטה',
   hotkeyRecording: 'הקש מקשים…',

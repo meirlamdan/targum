@@ -18,8 +18,7 @@ export default {
   translationPlaceholder: 'La traduction apparaît ici…',
   hintDesktop: 'Appuyez sur {key} partout pour traduire le texte sélectionné',
   translationFailed: 'Échec de la traduction',
-  engineGoogle: 'Google',
-  engineBing: 'Bing',
+
   hotkey: 'Raccourci clavier',
   hotkeyRecord: 'Cliquez pour enregistrer',
   hotkeyRecording: 'Appuyez sur les touches…',
