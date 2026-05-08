@@ -51,13 +51,13 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'Targum ${{ github.ref_name }}'
           releaseBody: |
-            ## הורדה
+            ## Download
 
-            הורד את הקובץ המתאים למערכת ההפעלה שלך מהרשימה למטה.
+            Choose the file for your operating system below.
 
-            - **Windows**: קובץ `_x64-setup.exe`
-            - **macOS (Apple Silicon)**: קובץ `_aarch64.dmg`
-            - **macOS (Intel)**: קובץ `_x64.dmg`
+            - **Windows**: `_x64-setup.exe`
+            - **macOS (Apple Silicon)**: `_aarch64.dmg`
+            - **macOS (Intel)**: `_x64.dmg`
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
