@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Targum — Translate any text instantly with a global hotkey. Desktop app for Windows and macOS." />
+  <title>Targum — Desktop Translation App</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Landing page design tokens ── */
+    :root {
+      --bg: #f5f5f7;
+      --surface: #ffffff;
+      --primary: #0071e3;
+      --primary-hover: #0077ed;
+      --text: #1d1d1f;
+      --text-muted: #6e6e73;
+      --border: #d1d1d6;
+      --radius: 10px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1c1c1e;
+        --surface: #2c2c2e;
+        --primary: #0a84ff;
+        --primary-hover: #409cff;
+        --text: #f5f5f7;
+        --text-muted: #98989d;
+        --border: #3a3a3c;
+      }
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    /* ── NAV ── */
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 48px;
+      background: rgba(255, 255, 255, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid #d1d1d6;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      nav {
+        background: rgba(28, 28, 30, 0.85);
+        border-bottom-color: #3a3a3c;
+      }
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+      font-size: 17px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .nav-logo svg { width: 28px; height: 28px; border-radius: 6px; flex-shrink: 0; }
+
+    .nav-links { display: flex; gap: 24px; align-items: center; list-style: none; }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      transition: color 0.15s ease;
+    }
+    .nav-links a:hover { color: var(--primary); }
+
+    /* ── HERO ── */
+    .hero {
+      text-align: center;
+      padding: 88px 24px 64px;
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    .hero-icon {
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      margin: 0 auto 28px;
+      display: block;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+    }
+
+    .hero h1 {
+      font-size: 56px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      margin-bottom: 18px;
+      line-height: 1.1;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--text-muted);
+      max-width: 520px;
+      margin: 0 auto 44px;
+      line-height: 1.65;
+    }
+
+    .cta-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 13px 26px;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-hover); }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { filter: brightness(0.96); }
+
+    /* ── MOCKUP ── */
+    .mockup-section {
+      padding: 16px 32px 88px;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    /* The app window always renders in dark mode — same as app's dark theme */
+    .app-window {
+      --aw-bg:      #1c1c1e;
+      --aw-surface: #2c2c2e;
+      --aw-border:  #3a3a3c;
+      --aw-text:    #f5f5f7;
+      --aw-muted:   #98989d;
+      --aw-primary: #0a84ff;
+      --aw-dimmed:  #48484a;
+
+      background: var(--aw-surface);
+      border-radius: 14px;
+      box-shadow:
+        0 40px 100px rgba(0, 0, 0, 0.32),
+        0 0 0 1px rgba(255, 255, 255, 0.07);
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      color: var(--aw-text);
+    }
+
+    /* Title bar (macOS chrome) */
+    .aw-titlebar {
+      background: #252527;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--aw-border);
+      position: relative;
+      user-select: none;
+    }
+
+    .traffic-lights { display: flex; gap: 7px; }
+    .traffic-light { width: 12px; height: 12px; border-radius: 50%; }
+    .tl-red    { background: #ff5f57; }
+    .tl-yellow { background: #febc2e; }
+    .tl-green  { background: #28c840; }
+
+    .aw-wintitle {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      color: var(--aw-muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    /* App header (mirrors .app-header: 3-col grid) */
+    .aw-header {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      padding: 10px 14px;
+      background: var(--aw-surface);
+      border-bottom: 1px solid var(--aw-border);
+      gap: 10px;
+    }
+
+    .aw-app-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .aw-lang-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .aw-select {
+      background: var(--aw-bg);
+      border: 1px solid var(--aw-border);
+      border-radius: 6px;
+      color: var(--aw-text);
+      font-size: 12px;
+      padding: 3px 7px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+
+    .aw-arrow { color: var(--aw-muted); font-size: 9px; }
+
+    .aw-btn-swap {
+      background: transparent;
+      border: 1px solid var(--aw-border);
+      border-radius: 5px;
+      color: var(--aw-muted);
+      font-size: 12px;
+      padding: 1px 5px;
+      line-height: 1.4;
+    }
+
+    .aw-header-end {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      justify-self: end;
+    }
+
+    .aw-select-sm {
+      font-size: 11px;
+      padding: 2px 5px;
+    }
+
+    .aw-btn-icon {
+      background: transparent;
+      border: none;
+      color: var(--aw-muted);
+      font-size: 13px;
+      padding: 2px 4px;
+      line-height: 1;
+    }
+
+    /* Panels */
+    .aw-panels {
+      display: grid;
+      grid-template-columns: 1fr 1px 1fr;
+      min-height: 180px;
+    }
+
+    .aw-panel-divider { background: var(--aw-border); }
+
+    .aw-panel {
+      display: flex;
+      flex-direction: column;
+      background: var(--aw-surface);
+    }
+
+    .aw-panel-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 14px;
+      border-bottom: 1px solid var(--aw-border);
+      height: 32px;
+    }
+
+    .aw-panel-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--aw-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .aw-toolbar-actions { display: flex; align-items: center; gap: 5px; }
+
+    .aw-btn-clear {
+      background: transparent;
+      border: none;
+      color: var(--aw-muted);
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .aw-btn-copy {
+      background: var(--aw-primary);
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-size: 10px;
+      font-weight: 500;
+      padding: 2px 8px;
+    }
+
+    .aw-panel-text {
+      flex: 1;
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--aw-text);
+    }
+
+    .aw-panel-text.rtl { direction: rtl; text-align: right; }
+    .aw-panel-text.placeholder { color: var(--aw-dimmed); }
+
+    /* Status bar */
+    .aw-statusbar {
+      padding: 5px 16px;
+      border-top: 1px solid var(--aw-border);
+      background: var(--aw-surface);
+      font-size: 10px;
+      color: var(--aw-muted);
+      display: flex;
+      align-items: center;
+    }
+
+    .aw-kbd {
+      background: var(--aw-bg);
+      border: 1px solid var(--aw-border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-family: inherit;
+      font-size: 9px;
+    }
+
+    /* ── FEATURES ── */
+    .features-section {
+      padding: 88px 32px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 38px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 52px;
+      line-height: 1.2;
+      max-width: 560px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px 26px;
+      transition: box-shadow 0.15s ease;
+    }
+    .feature-card:hover { box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08); }
+
+    .feature-icon { font-size: 26px; margin-bottom: 14px; display: block; }
+    .feature-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; }
+
+    /* ── DOWNLOAD ── */
+    .download-section {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 88px 32px;
+      text-align: center;
+    }
+
+    .download-inner { max-width: 680px; margin: 0 auto; }
+    .download-inner .section-title { margin-bottom: 10px; max-width: none; }
+
+    .download-desc { color: var(--text-muted); font-size: 18px; margin-bottom: 48px; }
+
+    .download-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .download-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 28px 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      text-decoration: none;
+      color: var(--text);
+      transition: all 0.15s ease;
+    }
+    .download-card:hover {
+      border-color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 113, 227, 0.12);
+    }
+
+    .download-card-icon { font-size: 34px; }
+    .download-card-title { font-size: 14px; font-weight: 600; }
+    .download-card-sub { font-size: 12px; color: var(--text-muted); }
+
+    .version-note { margin-top: 28px; font-size: 13px; color: var(--text-muted); }
+    .version-note a { color: var(--primary); text-decoration: none; }
+    .version-note a:hover { text-decoration: underline; }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 32px 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 900px;
+      margin: 0 auto;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+    footer a { color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+    footer a:hover { color: var(--primary); }
+    .footer-links { display: flex; gap: 20px; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 700px) {
+      nav { padding: 12px 20px; }
+      .nav-links { display: none; }
+
+      .hero { padding: 56px 20px 48px; }
+      .hero h1 { font-size: 38px; }
+      .hero p { font-size: 17px; }
+
+      .mockup-section { padding: 8px 16px 64px; }
+      .aw-panels { grid-template-columns: 1fr; min-height: auto; }
+      .aw-panel-divider { display: none; }
+      .aw-panel:first-child { border-bottom: 1px solid var(--aw-border, #3a3a3c); }
+
+      .features-section { padding: 64px 20px; }
+      .section-title { font-size: 28px; }
+      .features-grid { grid-template-columns: 1fr; }
+
+      .download-section { padding: 64px 20px; }
+      .download-grid { grid-template-columns: 1fr; }
+
+      footer { flex-direction: column; gap: 16px; text-align: center; padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="#">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+        <rect width="1024" height="1024" rx="200" fill="#1E2D56"/>
+        <path fill="#F4EFE4" d="M162,228 L862,228 L862,298 L902,298 L902,348 L584,348 L584,768 L624,768 L624,796 L400,796 L400,768 L440,768 L440,348 L122,348 L122,298 L162,298 Z"/>
+      </svg>
+      Targum
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#download">Download</a></li>
+      <li><a href="https://github.com/meirlamdan/targum">GitHub</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <svg class="hero-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+      <rect width="1024" height="1024" rx="200" fill="#1E2D56"/>
+      <path fill="#F4EFE4" d="M162,228 L862,228 L862,298 L902,298 L902,348 L584,348 L584,768 L624,768 L624,796 L400,796 L400,768 L440,768 L440,348 L122,348 L122,298 L162,298 Z"/>
+    </svg>
+    <h1>Targum</h1>
+    <p>Translate any text, instantly, without leaving your app. Select, press a hotkey, read.</p>
+    <div class="cta-group">
+      <a class="btn btn-primary" href="#download">Download</a>
+      <a class="btn btn-secondary" href="https://github.com/meirlamdan/targum">View on GitHub</a>
+    </div>
+  </section>
+
+  <!-- APP WINDOW MOCKUP — matches actual app layout -->
+  <div class="mockup-section">
+    <div class="app-window">
+
+      <!-- macOS title bar chrome -->
+      <div class="aw-titlebar">
+        <div class="traffic-lights">
+          <div class="traffic-light tl-red"></div>
+          <div class="traffic-light tl-yellow"></div>
+          <div class="traffic-light tl-green"></div>
+        </div>
+        <span class="aw-wintitle">Targum</span>
+      </div>
+
+      <!-- App header: 3-column grid (mirrors .app-header in App.vue) -->
+      <div class="aw-header">
+        <span class="aw-app-title">Targum</span>
+
+        <div class="aw-lang-row">
+          <div class="aw-select">Auto <span class="aw-arrow">▾</span></div>
+          <span class="aw-btn-swap">⇄</span>
+          <div class="aw-select">עברית <span class="aw-arrow">▾</span></div>
+        </div>
+
+        <div class="aw-header-end">
+          <div class="aw-select aw-select-sm">Google <span class="aw-arrow">▾</span></div>
+          <span class="aw-btn-icon">⚙</span>
+        </div>
+      </div>
+
+      <!-- Panels: source | divider | translation -->
+      <div class="aw-panels">
+
+        <div class="aw-panel">
+          <div class="aw-panel-toolbar">
+            <span class="aw-panel-label">Source</span>
+            <div class="aw-toolbar-actions">
+              <span class="aw-btn-clear">✕</span>
+            </div>
+          </div>
+          <div class="aw-panel-text">The limits of my language mean the limits of my world.</div>
+        </div>
+
+        <div class="aw-panel-divider"></div>
+
+        <div class="aw-panel">
+          <div class="aw-panel-toolbar">
+            <span class="aw-panel-label">Translation</span>
+            <div class="aw-toolbar-actions">
+              <span class="aw-btn-copy">Copy</span>
+            </div>
+          </div>
+          <div class="aw-panel-text rtl">גבולות השפה שלי הם גבולות עולמי.</div>
+        </div>
+
+      </div>
+
+      <!-- Status bar -->
+      <div class="aw-statusbar">
+        Press <span class="aw-kbd">Ctrl</span>&nbsp;+&nbsp;<span class="aw-kbd">Shift</span>&nbsp;+&nbsp;<span class="aw-kbd">T</span>&nbsp; to translate from any app
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section class="features-section" id="features">
+    <p class="section-label">Why Targum</p>
+    <h2 class="section-title">Everything you need to translate. Nothing you don't.</h2>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <span class="feature-icon">⌨️</span>
+        <h3 class="feature-title">Global Hotkey</h3>
+        <p class="feature-desc">Select text in any app, press <strong>Ctrl+Shift+T</strong>, and get a translation instantly — no copy-paste, no tab-switching. Fully configurable.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔄</span>
+        <h3 class="feature-title">Multiple Engines</h3>
+        <p class="feature-desc">Switch between translation engines on the fly. Compare results and trust the one that fits best.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔊</span>
+        <h3 class="feature-title">Text-to-Speech</h3>
+        <p class="feature-desc">Listen to your translation with live word-by-word highlighting. Supports US and British English accents.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🌍</span>
+        <h3 class="feature-title">20 Languages</h3>
+        <p class="feature-desc">Hebrew, Arabic, Chinese, Spanish, Japanese, Russian, and 14 more. Full RTL rendering for Hebrew, Arabic, and Persian.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🗂️</span>
+        <h3 class="feature-title">System Tray</h3>
+        <p class="feature-desc">Targum lives quietly in your system tray. It never gets in the way — until you need it.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">⚡</span>
+        <h3 class="feature-title">Lightweight</h3>
+        <p class="feature-desc">Built with Tauri — a Rust-powered backend paired with a Vue frontend. Fast startup, minimal memory footprint.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- DOWNLOAD -->
+  <section class="download-section" id="download">
+    <div class="download-inner">
+      <p class="section-label">Free &amp; Open Source</p>
+      <h2 class="section-title">Download Targum</h2>
+      <p class="download-desc">No subscription. No account. Just download and run.</p>
+      <div class="download-grid">
+
+        <a class="download-card" href="https://github.com/meirlamdan/targum/releases/latest">
+          <span class="download-card-icon">🪟</span>
+          <span class="download-card-title">Windows</span>
+          <span class="download-card-sub">Windows 10 / 11 · x64</span>
+        </a>
+
+        <a class="download-card" href="https://github.com/meirlamdan/targum/releases/latest">
+          <span class="download-card-icon">🍎</span>
+          <span class="download-card-title">macOS Apple Silicon</span>
+          <span class="download-card-sub">M1 / M2 / M3 · .dmg</span>
+        </a>
+
+        <a class="download-card" href="https://github.com/meirlamdan/targum/releases/latest">
+          <span class="download-card-icon">🍎</span>
+          <span class="download-card-title">macOS Intel</span>
+          <span class="download-card-sub">Intel · .dmg</span>
+        </a>
+
+      </div>
+      <p class="version-note">
+        Version 0.1.2 &nbsp;·&nbsp;
+        <a href="https://github.com/meirlamdan/targum/releases">All releases →</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>© 2025 Targum &nbsp;·&nbsp; MIT License</span>
+    <div class="footer-links">
+      <a href="https://github.com/meirlamdan/targum">GitHub</a>
+      <a href="https://github.com/meirlamdan/targum/issues">Issues</a>
+      <a href="https://github.com/meirlamdan/targum/releases">Releases</a>
+    </div>
+  </footer>
+
+</body>
+</html>

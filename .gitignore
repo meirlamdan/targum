@@ -1,0 +1,16 @@
+﻿src/
+src-tauri/
+public/
+.github/
+.vscode/
+.claude/
+node_modules/
+dist/
+package.json
+package-lock.json
+tsconfig.json
+tsconfig.node.json
+vite.config.ts
+CLAUDE.md
+README.md
+LICENSE
