@@ -42,8 +42,14 @@ const SOURCE_LANGUAGES = computed(() => [
   ...LANGUAGES,
 ]);
 
+const SUPPORTED_LANG_CODES = new Set(LANGUAGES.map(l => l.code));
+function systemDefaultLang(): string {
+  const primary = navigator.language.split('-')[0].toLowerCase();
+  return SUPPORTED_LANG_CODES.has(primary) ? primary : 'he';
+}
+
 const sourceText = ref('');
-const targetLang = ref(localStorage.getItem('targetLang') ?? 'he');
+const targetLang = ref(localStorage.getItem('targetLang') ?? systemDefaultLang());
 const sourceLang = ref('auto');
 const engine = ref<'google' | 'bing'>((localStorage.getItem('translationEngine') as 'google' | 'bing') ?? 'google');
 const ENGINE_OPTIONS = [{ code: 'google', label: 'Google' }, { code: 'bing', label: 'Bing' }];
