@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Classic deep navy background -->
+  <rect width="1024" height="1024" rx="200" fill="#1E2D56"/>
+
+  <!--
+    Classic serif capital T, centered on canvas.
+    Crossbar: x=162–862 (700px wide), y=228–348 (120px tall)
+    Bracket serifs at crossbar ends: 40px overhang, from y=298 down to y=348
+    Stem: x=440–584 (144px wide), y=348–796
+    Foot serifs at stem bottom: 40px overhang, from y=768 to y=796
+  -->
+  <path fill="#F4EFE4"
+    d="M 162,228
+       L 862,228
+       L 862,298  L 902,298  L 902,348
+       L 584,348
+       L 584,768  L 624,768  L 624,796
+       L 400,796  L 400,768  L 440,768
+       L 440,348
+       L 122,348  L 122,298  L 162,298
+       Z"/>
+</svg>
