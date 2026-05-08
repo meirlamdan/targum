@@ -1,6 +1,6 @@
 [package]
 name = "targum"
-version = "0.1.0"
+version = "0.1.2"
 description = "Desktop translation app"
 authors = []
 edition = "2021"
