@@ -50,6 +50,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             translate::translate_text,
             translate::translate_bing_text,
+            translate::translate_mymemory_text,
             get_hotkey,
             set_hotkey,
         ])

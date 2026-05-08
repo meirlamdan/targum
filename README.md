@@ -8,8 +8,8 @@ Targum is a lightweight desktop app for instant text translation. Select any tex
 ## Features
 
 - **Global hotkey** — Select text in any app, press `Ctrl+Shift+T` (Windows) or `Cmd+Shift+T` (macOS) to translate instantly (configurable)
-- **Two translation engines** — Google Translate and Bing Translator, toggle per-session
-- **Text-to-speech** — Listen to the translation with word-by-word highlighting; US/British English accent toggle
+- **Three translation engines** — Google Translate, Bing Translator, and MyMemory, selectable per-session
+- **Text-to-speech** — Listen to the translation with word-by-word highlighting; US/British English accent toggle in settings
 - **20 languages** — See full list below
 - **RTL support** — Full right-to-left rendering for Hebrew, Arabic, and Persian
 - **System tray** — Lives in the tray, press the hotkey or click the tray icon to open

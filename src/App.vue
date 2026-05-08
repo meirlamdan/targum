@@ -51,8 +51,8 @@ function systemDefaultLang(): string {
 const sourceText = ref('');
 const targetLang = ref(localStorage.getItem('targetLang') ?? systemDefaultLang());
 const sourceLang = ref('auto');
-const engine = ref<'google' | 'bing'>((localStorage.getItem('translationEngine') as 'google' | 'bing') ?? 'google');
-const ENGINE_OPTIONS = [{ code: 'google', label: 'Google' }, { code: 'bing', label: 'Bing' }];
+const engine = ref<'google' | 'bing' | 'mymemory'>((localStorage.getItem('translationEngine') as 'google' | 'bing' | 'mymemory') ?? 'google');
+const ENGINE_OPTIONS = [{ code: 'google', label: 'Google' }, { code: 'bing', label: 'Bing' }, { code: 'mymemory', label: 'MyMemory' }];
 const copied = ref(false);
 const showSettings = ref(false);
 const hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window;

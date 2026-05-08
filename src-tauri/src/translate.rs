@@ -143,6 +143,54 @@ pub async fn translate_bing_text(text: String, target_lang: String, source_lang:
 }
 
 #[tauri::command]
+pub async fn translate_mymemory_text(text: String, target_lang: String, source_lang: String) -> Result<TranslateResult, String> {
+    if text.trim().is_empty() {
+        return Ok(TranslateResult { translated: String::new(), detected_lang: String::new() });
+    }
+
+    let mm_source = if source_lang == "auto" { "autodetect".to_string() } else { source_lang.clone() };
+    let langpair = format!("{}|{}", mm_source, target_lang);
+
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0")
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let response = client
+        .get("https://api.mymemory.translated.net/get")
+        .query(&[("q", text.as_str()), ("langpair", langpair.as_str())])
+        .send()
+        .await
+        .map_err(|e| format!("MyMemory network error: {}", e))?;
+
+    let status = response.status();
+    let body = response.text().await.map_err(|e| format!("MyMemory read error: {}", e))?;
+
+    if !status.is_success() {
+        return Err(format!("MyMemory HTTP {}: {}", status, &body[..body.len().min(300)]));
+    }
+
+    let raw: serde_json::Value = serde_json::from_str(&body)
+        .map_err(|e| format!("MyMemory parse error: {} — body: {}", e, &body[..body.len().min(300)]))?;
+
+    if raw["responseStatus"].as_u64().unwrap_or(200) == 429 {
+        return Err("MyMemory: daily quota exceeded (50 000 chars/day)".to_string());
+    }
+
+    let translated = raw["responseData"]["translatedText"]
+        .as_str()
+        .ok_or_else(|| format!("MyMemory: unexpected response — body: {}", &body[..body.len().min(300)]))?
+        .to_string();
+
+    let detected_lang = raw["matches"][0]["source-lang"]
+        .as_str()
+        .map(|s| s.to_lowercase())
+        .unwrap_or_else(|| "auto".to_string());
+
+    Ok(TranslateResult { translated, detected_lang })
+}
+
+#[tauri::command]
 pub async fn translate_text(text: String, target_lang: String, source_lang: String) -> Result<TranslateResult, String> {
     if text.trim().is_empty() {
         return Ok(TranslateResult {

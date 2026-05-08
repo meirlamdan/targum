@@ -27,7 +27,7 @@ export function useTranslation(targetLang: Ref<string>, sourceLang: Ref<string>,
           text,
           targetLang.value,
           sourceLang.value,
-          engine.value as 'google' | 'bing'
+          engine.value as 'google' | 'bing' | 'mymemory'
         );
       } catch (e) {
         error.value = e instanceof Error ? e.message : (typeof e === 'string' ? e : t('translationFailed'));
