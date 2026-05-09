@@ -27,6 +27,14 @@
       "csp": "default-src 'self'; connect-src 'self' https://translate.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self' blob:"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDIwMjBFMkY4QTI5NDI2NzMKUldSekpwU2krT0lnSVB2bmcxczZhWUNRZWgyTDdjeHVYbkNIYWlLMnlBcnZiemVLemtSNEQrWnkK",
+      "endpoints": [
+        "https://github.com/meirlamdan/targum/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",

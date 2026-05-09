@@ -26,4 +26,12 @@ export default {
   englishAccent: 'English accent',
   accentAmerican: 'American',
   accentBritish: 'British',
+
+  updates: 'Software updates',
+  checkForUpdates: 'Check for updates',
+  checking: 'Checking…',
+  upToDate: 'Up to date',
+  installUpdate: 'Install',
+  downloading: 'Downloading…',
+  updateError: 'Check failed',
 }

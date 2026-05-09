@@ -26,4 +26,12 @@ export default {
   englishAccent: 'מבטא אנגלי',
   accentAmerican: 'אמריקאי',
   accentBritish: 'בריטי',
+
+  updates: 'עדכוני תוכנה',
+  checkForUpdates: 'בדוק עדכונים',
+  checking: 'בודק…',
+  upToDate: 'עדכני',
+  installUpdate: 'התקן',
+  downloading: 'מוריד…',
+  updateError: 'הבדיקה נכשלה',
 }

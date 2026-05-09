@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useTranslation } from './composables/useTranslation';
 import { useHotkeyText } from './composables/useHotkeyText';
 import { useSpeech } from './composables/useSpeech';
+import { useUpdater } from './composables/useUpdater';
 import { APP_LANGUAGES } from './i18n';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
@@ -176,6 +177,16 @@ const currentHotkey = ref('Ctrl+Shift+T');
 const recordingHotkey = ref(false);
 const hotkeyError = ref('');
 
+const {
+  currentVersion,
+  updateStatus,
+  updateInfo,
+  progressPercent,
+  errorMessage: updateError,
+  checkForUpdate,
+  installUpdate,
+} = useUpdater();
+
 onMounted(() => {
   invoke<string>('get_hotkey').then(h => { currentHotkey.value = h; });
 
@@ -292,6 +303,40 @@ function onHotkeyKeydown(e: KeyboardEvent) {
               {{ recordingHotkey ? t('hotkeyRecording') : currentHotkey }}
             </button>
             <div v-if="hotkeyError" class="hotkey-error">{{ hotkeyError }}</div>
+          </div>
+        </div>
+        <div class="settings-row settings-row-bordered">
+          <div class="settings-label-group">
+            <span class="settings-label">{{ t('updates') }}</span>
+            <span v-if="currentVersion" class="version-badge">v{{ currentVersion }}</span>
+          </div>
+          <div class="update-actions">
+            <template v-if="updateStatus === 'checking'">
+              <span class="update-status-row"><span class="dot-pulse" />{{ t('checking') }}</span>
+            </template>
+            <template v-else-if="updateStatus === 'downloading'">
+              <div class="update-progress">
+                <span class="update-status-row"><span class="dot-pulse" />{{ t('downloading') }}</span>
+                <div class="progress-bar">
+                  <div class="progress-fill" :style="{ width: (progressPercent ?? 0) + '%' }" />
+                </div>
+              </div>
+            </template>
+            <template v-else>
+              <span v-if="updateStatus === 'up-to-date'" class="update-ok">{{ t('upToDate') }}</span>
+              <span v-if="updateStatus === 'available'" class="update-available">v{{ updateInfo?.version }}</span>
+              <span v-if="updateStatus === 'error'" class="update-error-msg" :title="updateError">{{ t('updateError') }}</span>
+              <button
+                v-if="updateStatus !== 'available'"
+                class="btn-check-update"
+                @click="checkForUpdate"
+              >{{ t('checkForUpdates') }}</button>
+              <button
+                v-if="updateStatus === 'available'"
+                class="btn-install-update"
+                @click="installUpdate"
+              >{{ t('installUpdate') }}</button>
+            </template>
           </div>
         </div>
       </div>
@@ -763,4 +808,96 @@ kbd {
   font-size: 0.75rem;
   color: var(--error);
 }
+
+.settings-label-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.version-badge {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.update-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.update-status-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.update-ok {
+  font-size: 0.82rem;
+  color: var(--copy-success);
+}
+
+.update-available {
+  font-size: 0.82rem;
+  color: var(--primary);
+  font-weight: 500;
+}
+
+.update-error-msg {
+  font-size: 0.82rem;
+  color: var(--error);
+  cursor: default;
+}
+
+.update-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.progress-bar {
+  width: 100px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 2px;
+  transition: width 0.2s ease;
+  min-width: 8px;
+}
+
+.btn-check-update {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn-check-update:hover { border-color: var(--primary); background: var(--surface); }
+
+.btn-install-update {
+  background: var(--primary);
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 3px 10px;
+  transition: background 0.15s;
+}
+.btn-install-update:hover { background: var(--primary-hover); }
 </style>
