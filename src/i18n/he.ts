@@ -27,6 +27,11 @@ export default {
   accentAmerican: 'אמריקאי',
   accentBritish: 'בריטי',
 
+  history: 'היסטוריה',
+  clearHistory: 'נקה הכל',
+  noHistory: 'אין תרגומים עדיין',
+  historyHint: 'לחץ על פריט לשחזור',
+
   updates: 'עדכוני תוכנה',
   checkForUpdates: 'בדוק עדכונים',
   checking: 'בודק…',

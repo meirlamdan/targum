@@ -27,6 +27,11 @@ export default {
   accentAmerican: 'American',
   accentBritish: 'British',
 
+  history: 'History',
+  clearHistory: 'Clear All',
+  noHistory: 'No translations yet',
+  historyHint: 'Click an item to restore it',
+
   updates: 'Software updates',
   checkForUpdates: 'Check for updates',
   checking: 'Checking…',

@@ -49,6 +49,17 @@ function systemDefaultLang(): string {
   return SUPPORTED_LANG_CODES.has(primary) ? primary : 'he';
 }
 
+interface HistoryEntry {
+  id: number
+  sourceText: string
+  translated: string
+  sourceLang: string
+  detectedLang: string
+  targetLang: string
+  engine: string
+  timestamp: number
+}
+
 const sourceText = ref('');
 const targetLang = ref(localStorage.getItem('targetLang') ?? systemDefaultLang());
 const sourceLang = ref('auto');
@@ -56,6 +67,8 @@ const engine = ref<'google' | 'bing' | 'mymemory'>((localStorage.getItem('transl
 const ENGINE_OPTIONS = [{ code: 'google', label: 'Google' }, { code: 'bing', label: 'Bing' }, { code: 'mymemory', label: 'MyMemory' }];
 const copied = ref(false);
 const showSettings = ref(false);
+const showHistory = ref(false);
+const history = ref<HistoryEntry[]>(JSON.parse(localStorage.getItem('translationHistory') ?? '[]'));
 const hasSpeech = typeof window !== 'undefined' && 'speechSynthesis' in window;
 const appLocale = ref(locale.value);
 const englishAccent = ref(localStorage.getItem('englishAccent') ?? 'en-US');
@@ -130,6 +143,29 @@ watch(targetLang, (lang) => {
 });
 watch(sourceLang, () => translate(sourceText.value, true));
 
+watch(() => result.value.translated, (translated) => {
+  if (!translated || !sourceText.value || loading.value) return;
+  const last = history.value[0];
+  if (last?.sourceText === sourceText.value && last.targetLang === targetLang.value && last.engine === engine.value) return;
+  const isTypingSession = !!last &&
+    last.targetLang === targetLang.value &&
+    last.engine === engine.value &&
+    (Date.now() - last.timestamp) < 5 * 60 * 1000 &&
+    (sourceText.value.startsWith(last.sourceText) || last.sourceText.startsWith(sourceText.value));
+  const entry: HistoryEntry = {
+    id: isTypingSession ? last!.id : Date.now(),
+    sourceText: sourceText.value,
+    translated,
+    sourceLang: sourceLang.value,
+    detectedLang: result.value.detected_lang ?? '',
+    targetLang: targetLang.value,
+    engine: engine.value,
+    timestamp: Date.now(),
+  };
+  history.value = [entry, ...(isTypingSession ? history.value.slice(1) : history.value)].slice(0, 100);
+  localStorage.setItem('translationHistory', JSON.stringify(history.value));
+});
+
 useHotkeyText((text) => {
   sourceLang.value = 'auto';
   sourceText.value = text;
@@ -195,7 +231,7 @@ onMounted(() => {
   });
 
   getCurrentWindow().onFocusChanged(({ payload: focused }) => {
-    if (focused) showSettings.value = false;
+    if (focused) { showSettings.value = false; showHistory.value = false; }
   });
 });
 
@@ -232,13 +268,48 @@ async function captureHotkey(e: KeyboardEvent) {
 function onHotkeyKeydown(e: KeyboardEvent) {
   if (recordingHotkey.value) captureHotkey(e);
 }
+
+function relativeTime(ts: number): string {
+  const diff = Math.floor((Date.now() - ts) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function historyLangLabel(code: string, detected?: string): string {
+  if (code === 'auto') {
+    if (!detected) return t('autoDetect');
+    const mapped = GOOGLE_CODE_MAP[detected] ?? detected;
+    return LANGUAGES.find(l => l.code === mapped)?.label ?? mapped;
+  }
+  return LANGUAGES.find(l => l.code === code)?.label ?? code;
+}
+
+function restoreHistoryEntry(entry: HistoryEntry) {
+  sourceLang.value = entry.sourceLang;
+  targetLang.value = entry.targetLang;
+  engine.value = entry.engine as 'google' | 'bing' | 'mymemory';
+  sourceText.value = entry.sourceText;
+  showHistory.value = false;
+}
+
+function deleteHistoryEntry(id: number) {
+  history.value = history.value.filter(e => e.id !== id);
+  localStorage.setItem('translationHistory', JSON.stringify(history.value));
+}
+
+function clearAllHistory() {
+  history.value = [];
+  localStorage.removeItem('translationHistory');
+}
 </script>
 
 <template>
   <div class="app" :dir="appDir">
     <header class="app-header">
       <!-- Normal mode -->
-      <template v-if="!showSettings">
+      <template v-if="!showSettings && !showHistory">
         <div class="header-start">
           <LangSelect v-model="sourceLang" :options="SOURCE_LANGUAGES" />
         </div>
@@ -247,6 +318,12 @@ function onHotkeyKeydown(e: KeyboardEvent) {
           <LangSelect v-model="targetLang" :options="LANGUAGES" />
           <div class="header-end-spacer" />
           <LangSelect v-model="engine" :options="ENGINE_OPTIONS" small />
+          <button class="btn-icon" @click="showHistory = true" :title="t('history')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </button>
           <button class="btn-icon" @click="showSettings = true" :title="t('settings')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
@@ -254,6 +331,18 @@ function onHotkeyKeydown(e: KeyboardEvent) {
             </svg>
           </button>
         </div>
+      </template>
+
+      <!-- History mode -->
+      <template v-else-if="showHistory">
+        <button class="btn-icon btn-back" @click="showHistory = false" :title="t('back')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <span class="app-title">{{ t('history') }}</span>
+        <button v-if="history.length" class="btn-clear-history" @click="clearAllHistory">{{ t('clearHistory') }}</button>
+        <div v-else class="header-spacer" />
       </template>
 
       <!-- Settings mode -->
@@ -342,7 +431,35 @@ function onHotkeyKeydown(e: KeyboardEvent) {
       </div>
     </div>
 
-    <main v-if="!showSettings" class="panels">
+    <!-- History content -->
+    <div v-if="showHistory" class="settings-content">
+      <div v-if="!history.length" class="history-empty">
+        <span>{{ t('noHistory') }}</span>
+        <span class="history-hint">{{ t('historyHint') }}</span>
+      </div>
+      <div v-else class="settings-group">
+        <div
+          v-for="(entry, i) in history"
+          :key="entry.id"
+          class="history-item"
+          :class="{ 'settings-row-bordered': i > 0 }"
+          @click="restoreHistoryEntry(entry)"
+        >
+          <div class="history-item-body">
+            <div class="history-item-meta">
+              <span class="history-lang-pair">{{ historyLangLabel(entry.sourceLang, entry.detectedLang) }} → {{ historyLangLabel(entry.targetLang) }}</span>
+              <span class="history-engine">{{ entry.engine }}</span>
+              <span class="history-time">{{ relativeTime(entry.timestamp) }}</span>
+            </div>
+            <div class="history-source">{{ entry.sourceText }}</div>
+            <div class="history-translated">{{ entry.translated }}</div>
+          </div>
+          <button class="btn-icon history-delete" @click.stop="deleteHistoryEntry(entry.id)">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <main v-if="!showSettings && !showHistory" class="panels">
       <!-- Source panel -->
       <div class="panel source-panel">
         <div class="panel-toolbar">
@@ -423,7 +540,7 @@ function onHotkeyKeydown(e: KeyboardEvent) {
       </div>
     </main>
 
-    <footer v-if="!showSettings" class="status-bar">
+    <footer v-if="!showSettings && !showHistory" class="status-bar">
       <span v-if="loading" class="status-loading">
         <span class="dot-pulse" />
         {{ t('translating') }}
@@ -667,6 +784,7 @@ kbd {
 }
 .btn-icon:hover { background: var(--border); color: var(--text); }
 
+.btn-back { justify-self: start; }
 [dir="rtl"] .btn-back svg { transform: scaleX(-1); }
 
 .settings-content {
@@ -900,4 +1018,93 @@ kbd {
   transition: background 0.15s;
 }
 .btn-install-update:hover { background: var(--primary-hover); }
+
+/* History */
+.btn-clear-history {
+  background: transparent;
+  border: none;
+  color: var(--error);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 500;
+  padding: 3px 6px;
+  border-radius: 6px;
+  transition: background 0.15s;
+  justify-self: end;
+}
+.btn-clear-history:hover { background: color-mix(in srgb, var(--error) 12%, transparent); }
+
+.history-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.history-hint { font-size: 0.78rem; }
+
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.history-item:hover { background: var(--bg); }
+.history-item:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.history-item:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.history-item:only-child { border-radius: var(--radius); }
+
+.history-item-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+.history-item-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.history-lang-pair { font-weight: 500; }
+
+.history-engine {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0 5px;
+  text-transform: capitalize;
+}
+
+.history-time { margin-inline-start: auto; }
+
+.history-source {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-translated {
+  font-size: 0.88rem;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.history-delete {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.history-item:hover .history-delete { opacity: 1; }
 </style>
