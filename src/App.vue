@@ -228,13 +228,13 @@ function onHotkeyKeydown(e: KeyboardEvent) {
     <header class="app-header">
       <!-- Normal mode -->
       <template v-if="!showSettings">
-        <span class="app-title">{{ t('appTitle') }}</span>
-        <div class="lang-row">
+        <div class="header-start">
           <LangSelect v-model="sourceLang" :options="SOURCE_LANGUAGES" />
-          <button class="btn-swap" @click="swapLanguages" :disabled="!canSwap" :title="t('swapLanguages')">⇄</button>
-          <LangSelect v-model="targetLang" :options="LANGUAGES" />
         </div>
+        <button class="btn-swap" @click="swapLanguages" :disabled="!canSwap" :title="t('swapLanguages')">⇄</button>
         <div class="header-end">
+          <LangSelect v-model="targetLang" :options="LANGUAGES" />
+          <div class="header-end-spacer" />
           <LangSelect v-model="engine" :options="ENGINE_OPTIONS" small />
           <button class="btn-icon" @click="showSettings = true" :title="t('settings')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -449,12 +449,11 @@ body { background: var(--bg); color: var(--text); height: 100vh; overflow: hidde
   letter-spacing: -0.01em;
 }
 
-.lang-row {
+.header-start {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  font-size: 0.85rem;
-  color: var(--text-muted);
 }
 
 .btn-swap {
@@ -707,8 +706,9 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
-  justify-self: end;
 }
+
+.header-end-spacer { flex: 1; }
 
 
 .engine-toggle {
