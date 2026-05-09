@@ -221,9 +221,11 @@
       gap: 10px;
     }
 
-    .aw-app-title { font-size: 14px; font-weight: 600; }
-
-    .aw-lang-row { display: flex; align-items: center; gap: 6px; }
+    .aw-header-start {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
 
     /* LangSelect trigger button style */
     .aw-select {
@@ -255,8 +257,9 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      justify-self: end;
     }
+
+    .aw-header-end-spacer { flex: 1; }
 
     .aw-select-sm { font-size: 11px; padding: 2px 5px; }
 
@@ -562,15 +565,15 @@
 
       <!-- App header — mirrors .app-header grid-template-columns: 1fr auto 1fr -->
       <div class="aw-header">
-        <span class="aw-app-title">Targum</span>
-
-        <div class="aw-lang-row">
-          <div class="aw-select">עברית <span class="aw-arrow">▾</span></div>
-          <span class="aw-btn-swap">⇄</span>
-          <div class="aw-select">English <span class="aw-arrow">▾</span></div>
+        <div class="aw-header-start">
+          <div class="aw-select">Auto-detect <span class="aw-arrow">▾</span></div>
         </div>
 
+        <span class="aw-btn-swap">⇄</span>
+
         <div class="aw-header-end">
+          <div class="aw-select">עברית <span class="aw-arrow">▾</span></div>
+          <div class="aw-header-end-spacer"></div>
           <div class="aw-select aw-select-sm">Google <span class="aw-arrow">▾</span></div>
           <!-- gear icon matching App.vue SVG -->
           <svg class="aw-btn-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--aw-muted)">
