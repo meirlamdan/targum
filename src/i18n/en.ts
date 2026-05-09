@@ -39,4 +39,11 @@ export default {
   installUpdate: 'Install',
   downloading: 'Downloading…',
   updateError: 'Check failed',
+
+  langNames: {
+    he: 'Hebrew', en: 'English', fr: 'French', ar: 'Arabic', es: 'Spanish',
+    ru: 'Russian', de: 'German', zh: 'Chinese', pt: 'Portuguese', it: 'Italian',
+    ja: 'Japanese', ko: 'Korean', nl: 'Dutch', pl: 'Polish', tr: 'Turkish',
+    uk: 'Ukrainian', fa: 'Persian', hi: 'Hindi', sv: 'Swedish', ro: 'Romanian',
+  },
 }

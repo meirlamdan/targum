@@ -38,9 +38,19 @@ const LANGUAGES = [
 
 const RTL_LANGS = new Set(['he', 'ar', 'fa', 'ur']);
 
+const displayLanguages = computed(() =>
+  LANGUAGES.map(lang => {
+    const uiName = t(`langNames.${lang.code}`);
+    return {
+      ...lang,
+      label: lang.label === uiName ? lang.label : `${lang.label} (${uiName})`,
+    };
+  })
+);
+
 const SOURCE_LANGUAGES = computed(() => [
   { code: 'auto', label: t('autoDetect') },
-  ...LANGUAGES,
+  ...displayLanguages.value,
 ]);
 
 const SUPPORTED_LANG_CODES = new Set(LANGUAGES.map(l => l.code));
@@ -315,7 +325,7 @@ function clearAllHistory() {
         </div>
         <button class="btn-swap" @click="swapLanguages" :disabled="!canSwap" :title="t('swapLanguages')">⇄</button>
         <div class="header-end">
-          <LangSelect v-model="targetLang" :options="LANGUAGES" />
+          <LangSelect v-model="targetLang" :options="displayLanguages" />
           <div class="header-end-spacer" />
           <LangSelect v-model="engine" :options="ENGINE_OPTIONS" small />
           <button class="btn-icon" @click="showHistory = true" :title="t('history')">
@@ -362,7 +372,7 @@ function clearAllHistory() {
       <div class="settings-group">
         <div class="settings-row">
           <label class="settings-label" for="default-lang">{{ t('defaultLang') }}</label>
-          <LangSelect v-model="targetLang" :options="LANGUAGES" />
+          <LangSelect v-model="targetLang" :options="displayLanguages" />
         </div>
         <div class="settings-row settings-row-bordered">
           <label class="settings-label" for="app-lang">{{ t('appLanguage') }}</label>

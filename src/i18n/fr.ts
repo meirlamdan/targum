@@ -26,4 +26,11 @@ export default {
   englishAccent: 'Accent anglais',
   accentAmerican: 'Américain',
   accentBritish: 'Britannique',
+
+  langNames: {
+    he: 'Hébreu', en: 'Anglais', fr: 'Français', ar: 'Arabe', es: 'Espagnol',
+    ru: 'Russe', de: 'Allemand', zh: 'Chinois', pt: 'Portugais', it: 'Italien',
+    ja: 'Japonais', ko: 'Coréen', nl: 'Néerlandais', pl: 'Polonais', tr: 'Turc',
+    uk: 'Ukrainien', fa: 'Persan', hi: 'Hindi', sv: 'Suédois', ro: 'Roumain',
+  },
 }
