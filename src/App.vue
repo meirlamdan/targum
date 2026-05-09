@@ -216,7 +216,7 @@ function swapLanguages() {
 const detectedLangLabel = computed(() => {
   if (!result.value.detected_lang) return '';
   const code = GOOGLE_CODE_MAP[result.value.detected_lang] ?? result.value.detected_lang;
-  return LANGUAGES.find(l => l.code === code)?.label ?? result.value.detected_lang;
+  return displayLanguages.value.find(l => l.code === code)?.label ?? result.value.detected_lang;
 });
 
 const currentHotkey = ref('Ctrl+Shift+T');
@@ -291,9 +291,9 @@ function historyLangLabel(code: string, detected?: string): string {
   if (code === 'auto') {
     if (!detected) return t('autoDetect');
     const mapped = GOOGLE_CODE_MAP[detected] ?? detected;
-    return LANGUAGES.find(l => l.code === mapped)?.label ?? mapped;
+    return displayLanguages.value.find(l => l.code === mapped)?.label ?? mapped;
   }
-  return LANGUAGES.find(l => l.code === code)?.label ?? code;
+  return displayLanguages.value.find(l => l.code === code)?.label ?? code;
 }
 
 function restoreHistoryEntry(entry: HistoryEntry) {
