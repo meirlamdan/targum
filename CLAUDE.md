@@ -50,7 +50,8 @@ No test or lint scripts are configured yet.
 | `src/composables/useTranslation.ts` | Translation state + 500ms debounce |
 | `src/composables/useHotkeyText.ts` | Bridges `translate-selection` Tauri event to App.vue |
 | `src/composables/useSpeech.ts` | Web Speech API wrapper with word-boundary highlighting |
-| `src/api/translate.ts` | API layer — routes to `invoke('translate_text'` or `translate_bing_text`)` |
+| `src/composables/useUpdater.ts` | In-app update checker — wraps `check_for_update` / `install_update` Tauri commands, tracks download progress |
+| `src/api/translate.ts` | API layer — routes to `invoke('translate_text'`, `translate_bing_text`, or `translate_mymemory_text`)` |
 | `src/i18n/index.ts` | vue-i18n setup (en + he); locale persisted in localStorage |
 | `src/i18n/en.ts` | English UI strings (31 keys) |
 | `src/i18n/he.ts` | Hebrew UI strings (31 keys) |
@@ -59,10 +60,11 @@ No test or lint scripts are configured yet.
 
 - **App name:** Targum (`com.meir.targum`). Product name is "Targum" in `tauri.conf.json`.
 - **Languages:** 20 languages hardcoded in `App.vue`: Hebrew, English, French, Arabic, Spanish, Russian, German, Chinese, Portuguese, Italian, Japanese, Korean, Dutch, Polish, Turkish, Ukrainian, Persian, Hindi, Swedish, Romanian. RTL is applied for Hebrew, Arabic, and Persian.
-- **Translation engines:** Google (`translate.googleapis.com/translate_a/single`) and Bing (scrapes page for anti-abuse tokens before each request). Engine toggled per-session, persisted in localStorage.
+- **Translation engines:** Google (`translate.googleapis.com/translate_a/single`), Bing (scrapes page for anti-abuse tokens before each request), and MyMemory (`api.mymemory.translated.net/get`, free quota: 50 000 chars/day). Engine toggled per-session, persisted in localStorage.
 - **Text-to-speech:** `useSpeech.ts` wraps `SpeechSynthesisUtterance`. Supports US/British English accent toggle. Tracks word boundaries via `onboundary` for live word highlighting.
+- **In-app updates:** `useUpdater.ts` calls `check_for_update` / `install_update` Tauri commands (via `tauri-plugin-updater`). Update endpoint: `https://github.com/meirlamdan/targum/releases/latest/download/latest.json`. Emits `update-progress` event during download for progress tracking.
 - **Hotkey configuration:** User can record a new hotkey in the settings panel. `set_hotkey` Tauri command re-registers the shortcut and saves it via `config.rs`. `get_hotkey` reads the current value. Default: `Ctrl+Shift+T`.
-- **Window:** 800×500 (min 500×360), starts hidden (`visible: false`), centered. Close button hides the window instead of quitting.
+- **Window:** 680×420 (min 400×240), starts hidden (`visible: false`), centered. Close button hides the window instead of quitting.
 - **Tray:** Left-click toggles visibility. Menu has "Open Translator" and "Quit".
 - **UI locale:** English and Hebrew, toggled in settings, persisted in localStorage.
 - **CSP:** `tauri.conf.json` allows `https://translate.googleapis.com`. Bing API calls go through Rust/reqwest (not subject to browser CSP). Any new external domains called from the frontend need to be added to CSP.
