@@ -27,6 +27,19 @@ export default {
   accentAmerican: 'Américain',
   accentBritish: 'Britannique',
 
+  history: 'Historique',
+  clearHistory: 'Tout effacer',
+  noHistory: 'Aucune traduction',
+  historyHint: 'Cliquez pour restaurer',
+
+  updates: 'Mises à jour',
+  checkForUpdates: 'Vérifier les mises à jour',
+  checking: 'Vérification…',
+  upToDate: 'À jour',
+  installUpdate: 'Installer',
+  downloading: 'Téléchargement…',
+  updateError: 'Échec de la vérification',
+
   langNames: {
     he: 'Hébreu', en: 'Anglais', fr: 'Français', ar: 'Arabe', es: 'Espagnol',
     ru: 'Russe', de: 'Allemand', zh: 'Chinois', pt: 'Portugais', it: 'Italien',

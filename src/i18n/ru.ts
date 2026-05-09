@@ -27,6 +27,19 @@ export default {
   accentAmerican: 'Американский',
   accentBritish: 'Британский',
 
+  history: 'История',
+  clearHistory: 'Очистить всё',
+  noHistory: 'Нет переводов',
+  historyHint: 'Нажмите для восстановления',
+
+  updates: 'Обновления',
+  checkForUpdates: 'Проверить обновления',
+  checking: 'Проверка…',
+  upToDate: 'Актуально',
+  installUpdate: 'Установить',
+  downloading: 'Загрузка…',
+  updateError: 'Ошибка проверки',
+
   langNames: {
     he: 'Иврит', en: 'Английский', fr: 'Французский', ar: 'Арабский', es: 'Испанский',
     ru: 'Русский', de: 'Немецкий', zh: 'Китайский', pt: 'Португальский', it: 'Итальянский',
