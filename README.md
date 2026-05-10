@@ -16,8 +16,8 @@ Targum is a lightweight desktop app for instant text translation. Select any tex
 - **UI localization** — Interface available in English and Hebrew
 
 ## Screenshot
+<img width="784" height="374" alt="image" src="https://github.com/user-attachments/assets/57afaccc-1d90-4712-a315-5b5912ad451d" />
 
-<!-- Add screenshot here -->
 
 ## Download & Install
 
