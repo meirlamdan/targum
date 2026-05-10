@@ -62,4 +62,5 @@ jobs:
             - **macOS (Intel)**: `_x64.dmg`
           releaseDraft: false
           prerelease: false
+          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
