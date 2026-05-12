@@ -61,19 +61,36 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+      - name: Save Windows sig
+        if: matrix.platform == 'windows-latest'
+        shell: pwsh
+        run: |
+          $sig = Get-ChildItem -Recurse "src-tauri\target" -Filter "*.exe.sig" | Select-Object -First 1
+          if (-not $sig) { Write-Error "No .exe.sig found"; exit 1 }
+          Write-Host "Found: $($sig.FullName)"
+          Copy-Item $sig.FullName "win-sig.txt"
+
       - name: Upload Windows sig
         if: matrix.platform == 'windows-latest'
         uses: actions/upload-artifact@v4
         with:
           name: windows-sig
-          path: src-tauri/target/release/bundle/nsis/*.exe.sig
+          path: win-sig.txt
+
+      - name: Save macOS sig
+        if: matrix.platform == 'macos-latest'
+        run: |
+          sig=$(find src-tauri/target -name "*.app.tar.gz.sig" | head -1)
+          if [ -z "$sig" ]; then echo "No .app.tar.gz.sig found"; exit 1; fi
+          echo "Found: $sig"
+          cp "$sig" macos-sig.txt
 
       - name: Upload macOS sig
         if: matrix.platform == 'macos-latest'
         uses: actions/upload-artifact@v4
         with:
           name: macos-sig
-          path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+          path: macos-sig.txt
 
   updater-json:
     needs: release
@@ -90,12 +107,14 @@ jobs:
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
-          BASE="https://github.com/meirlamdan/targum/releases/download/${TAG}"
 
-          WIN_SIG=$(cat windows-sig/*.exe.sig)
-          WIN_FILE=$(basename windows-sig/*.exe.sig .sig)
-          MAC_SIG=$(cat macos-sig/*.app.tar.gz.sig)
-          MAC_FILE=$(basename macos-sig/*.app.tar.gz.sig .sig)
+          WIN_SIG=$(cat windows-sig/win-sig.txt)
+          MAC_SIG=$(cat macos-sig/macos-sig.txt)
+
+          WIN_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
+            --jq '.assets[] | select(.name | endswith(".exe")) | .browserDownloadUrl' | head -1)
+          MAC_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
+            --jq '.assets[] | select(.name | endswith(".app.tar.gz")) | .browserDownloadUrl' | head -1)
 
           cat > latest.json << EOF
           {
@@ -105,14 +124,15 @@ jobs:
             "platforms": {
               "windows-x86_64": {
                 "signature": "${WIN_SIG}",
-                "url": "${BASE}/${WIN_FILE}"
+                "url": "${WIN_URL}"
               },
               "darwin-aarch64": {
                 "signature": "${MAC_SIG}",
-                "url": "${BASE}/${MAC_FILE}"
+                "url": "${MAC_URL}"
               }
             }
           }
           EOF
 
-          gh release upload "${TAG}" latest.json --clobber
+          cat latest.json
+          gh release upload "${TAG}" latest.json --clobber --repo meirlamdan/targum
