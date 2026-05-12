@@ -61,23 +61,35 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Save Windows sig
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
+      - name: Sign release artifact and save sig
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          $nsisDir = "src-tauri\target\release\bundle\nsis"
-          Write-Host "Listing $nsisDir :"
-          if (Test-Path $nsisDir) {
-            Get-ChildItem $nsisDir | ForEach-Object { Write-Host "  $($_.Name)" }
-          } else {
-            Write-Host "  [directory not found]"
-          }
-          $sig = Get-ChildItem $nsisDir -ErrorAction SilentlyContinue |
-                 Where-Object { $_.Name -match '\.exe\.sig$' } |
-                 Select-Object -First 1
-          if (-not $sig) { Write-Error "No .exe.sig file found"; exit 1 }
-          Copy-Item $sig.FullName "win-sig.txt"
-          Write-Host "Saved: $($sig.Name)"
+          set -e
+          TAG="${{ github.ref_name }}"
+          mkdir -p installers
+
+          if [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
+            gh release download "$TAG" --repo meirlamdan/targum --pattern "*.exe" --dir installers
+            file=$(ls installers/*.exe | head -1)
+            sig_dest="win-sig.txt"
+          else
+            gh release download "$TAG" --repo meirlamdan/targum --pattern "*.app.tar.gz" --dir installers
+            file=$(ls installers/*.app.tar.gz | head -1)
+            sig_dest="macos-sig.txt"
+          fi
+
+          echo "Signing: $file"
+          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > /tmp/tauri_key.pem
+          npx tauri signer sign "$file" -k /tmp/tauri_key.pem -p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
+          rm -f /tmp/tauri_key.pem
+
+          echo "Sig content:"
+          cat "${file}.sig"
+          cp "${file}.sig" "$sig_dest"
 
       - name: Upload Windows sig
         if: matrix.platform == 'windows-latest'
@@ -85,21 +97,6 @@ jobs:
         with:
           name: windows-sig
           path: win-sig.txt
-
-      - name: Save macOS sig
-        if: matrix.platform == 'macos-latest'
-        run: |
-          macDir="src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
-          echo "Listing $macDir :"
-          ls -la "$macDir" 2>/dev/null || echo "  [directory not found]"
-          sig=$(find "$macDir" -maxdepth 1 -name "*.sig" 2>/dev/null | head -1)
-          if [ -z "$sig" ]; then
-            echo "No .sig found. Broader search:"
-            find src-tauri/target -name "*.sig" 2>/dev/null
-            exit 1
-          fi
-          cp "$sig" macos-sig.txt
-          echo "Saved: $sig"
 
       - name: Upload macOS sig
         if: matrix.platform == 'macos-latest'
