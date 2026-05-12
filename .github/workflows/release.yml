@@ -61,46 +61,12 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
-      - name: Save Windows sig
-        if: matrix.platform == 'windows-latest'
-        shell: pwsh
-        run: |
-          $sig = Get-ChildItem -Recurse "src-tauri\target" -Filter "*.exe.sig" | Select-Object -First 1
-          if (-not $sig) { Write-Error "No .exe.sig found"; exit 1 }
-          Write-Host "Found: $($sig.FullName)"
-          Copy-Item $sig.FullName "win-sig.txt"
-
-      - name: Upload Windows sig
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-sig
-          path: win-sig.txt
-
-      - name: Save macOS sig
-        if: matrix.platform == 'macos-latest'
-        run: |
-          sig=$(find src-tauri/target -name "*.app.tar.gz.sig" | head -1)
-          if [ -z "$sig" ]; then echo "No .app.tar.gz.sig found"; exit 1; fi
-          echo "Found: $sig"
-          cp "$sig" macos-sig.txt
-
-      - name: Upload macOS sig
-        if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-sig
-          path: macos-sig.txt
-
   updater-json:
     needs: release
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download signatures
-        uses: actions/download-artifact@v4
-
       - name: Generate and upload latest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -108,8 +74,13 @@ jobs:
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
 
-          WIN_SIG=$(cat windows-sig/win-sig.txt)
-          MAC_SIG=$(cat macos-sig/macos-sig.txt)
+          WIN_SIG_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
+            --jq '.assets[] | select(.name | endswith(".exe.sig")) | .browserDownloadUrl' | head -1)
+          MAC_SIG_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
+            --jq '.assets[] | select(.name | endswith(".app.tar.gz.sig")) | .browserDownloadUrl' | head -1)
+
+          WIN_SIG=$(curl -sL -H "Authorization: token $GITHUB_TOKEN" "${WIN_SIG_URL}")
+          MAC_SIG=$(curl -sL -H "Authorization: token $GITHUB_TOKEN" "${MAC_SIG_URL}")
 
           WIN_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
             --jq '.assets[] | select(.name | endswith(".exe")) | .browserDownloadUrl' | head -1)
