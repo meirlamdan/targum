@@ -59,5 +59,60 @@ jobs:
             - **macOS (Apple Silicon)**: `_aarch64.dmg`
           releaseDraft: false
           prerelease: false
-          updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+
+      - name: Upload Windows sig
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-sig
+          path: src-tauri/target/release/bundle/nsis/*.exe.sig
+
+      - name: Upload macOS sig
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-sig
+          path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app.tar.gz.sig
+
+  updater-json:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download signatures
+        uses: actions/download-artifact@v4
+
+      - name: Generate and upload latest.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          BASE="https://github.com/meirlamdan/targum/releases/download/${TAG}"
+
+          WIN_SIG=$(cat windows-sig/*.exe.sig)
+          WIN_FILE=$(basename windows-sig/*.exe.sig .sig)
+          MAC_SIG=$(cat macos-sig/*.app.tar.gz.sig)
+          MAC_FILE=$(basename macos-sig/*.app.tar.gz.sig .sig)
+
+          cat > latest.json << EOF
+          {
+            "version": "${VERSION}",
+            "notes": "",
+            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "platforms": {
+              "windows-x86_64": {
+                "signature": "${WIN_SIG}",
+                "url": "${BASE}/${WIN_FILE}"
+              },
+              "darwin-aarch64": {
+                "signature": "${MAC_SIG}",
+                "url": "${BASE}/${MAC_FILE}"
+              }
+            }
+          }
+          EOF
+
+          gh release upload "${TAG}" latest.json --clobber
