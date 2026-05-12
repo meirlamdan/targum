@@ -60,6 +60,7 @@ jobs:
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+          uploadUpdaterSignatures: true
 
   updater-json:
     needs: release
@@ -71,6 +72,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -e
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
 
@@ -79,31 +81,36 @@ jobs:
           MAC_SIG_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
             --jq '.assets[] | select(.name | endswith(".app.tar.gz.sig")) | .browserDownloadUrl' | head -1)
 
-          WIN_SIG=$(curl -sL -H "Authorization: token $GITHUB_TOKEN" "${WIN_SIG_URL}")
-          MAC_SIG=$(curl -sL -H "Authorization: token $GITHUB_TOKEN" "${MAC_SIG_URL}")
+          if [ -z "$WIN_SIG_URL" ] || [ -z "$MAC_SIG_URL" ]; then
+            echo "ERROR: Signature files not found in release assets. Assets present:"
+            gh release view "${TAG}" --repo meirlamdan/targum --json assets --jq '.assets[].name'
+            exit 1
+          fi
+
+          WIN_SIG=$(curl -fsSL -H "Authorization: token $GITHUB_TOKEN" "${WIN_SIG_URL}")
+          MAC_SIG=$(curl -fsSL -H "Authorization: token $GITHUB_TOKEN" "${MAC_SIG_URL}")
 
           WIN_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
             --jq '.assets[] | select(.name | endswith(".exe")) | .browserDownloadUrl' | head -1)
           MAC_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
             --jq '.assets[] | select(.name | endswith(".app.tar.gz")) | .browserDownloadUrl' | head -1)
 
-          cat > latest.json << EOF
-          {
-            "version": "${VERSION}",
-            "notes": "",
-            "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "platforms": {
-              "windows-x86_64": {
-                "signature": "${WIN_SIG}",
-                "url": "${WIN_URL}"
-              },
-              "darwin-aarch64": {
-                "signature": "${MAC_SIG}",
-                "url": "${MAC_URL}"
+          jq -n \
+            --arg version "$VERSION" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg win_sig "$WIN_SIG" \
+            --arg win_url "$WIN_URL" \
+            --arg mac_sig "$MAC_SIG" \
+            --arg mac_url "$MAC_URL" \
+            '{
+              version: $version,
+              notes: "",
+              pub_date: $pub_date,
+              platforms: {
+                "windows-x86_64": {signature: $win_sig, url: $win_url},
+                "darwin-aarch64": {signature: $mac_sig, url: $mac_url}
               }
-            }
-          }
-          EOF
+            }' > latest.json
 
           cat latest.json
           gh release upload "${TAG}" latest.json --clobber --repo meirlamdan/targum
