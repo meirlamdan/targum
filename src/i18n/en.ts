@@ -32,6 +32,11 @@ export default {
   noHistory: 'No translations yet',
   historyHint: 'Click an item to restore it',
 
+  ocrButton: 'Capture screen text (OCR)',
+  ocrShortcut: 'OCR Shortcut',
+  ocrLang: 'OCR Language',
+  ocrNoText: 'No text detected in selection',
+
   updates: 'Software updates',
   checkForUpdates: 'Check for updates',
   checking: 'Checking…',

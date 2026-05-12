@@ -32,6 +32,11 @@ export default {
   noHistory: 'אין תרגומים עדיין',
   historyHint: 'לחץ על פריט לשחזור',
 
+  ocrButton: 'לכידת טקסט מהמסך (OCR)',
+  ocrShortcut: 'קיצור OCR',
+  ocrLang: 'שפת OCR',
+  ocrNoText: 'לא זוהה טקסט באזור שנבחר',
+
   updates: 'עדכוני תוכנה',
   checkForUpdates: 'בדוק עדכונים',
   checking: 'בודק…',

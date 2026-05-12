@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "ocr-overlay",
+  "description": "Capability for the OCR overlay window",
+  "windows": ["ocr-overlay"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-hide",
+    "core:window:allow-show"
+  ]
+}

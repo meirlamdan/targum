@@ -5,12 +5,22 @@ use tauri::{AppHandle, Manager};
 #[derive(Serialize, Deserialize)]
 pub struct AppConfig {
     pub hotkey: String,
+    #[serde(default = "default_ocr_hotkey")]
+    pub ocr_hotkey: String,
+    #[serde(default)]
+    pub ocr_lang: String, // empty = use Windows profile language
+}
+
+fn default_ocr_hotkey() -> String {
+    "Ctrl+Shift+S".to_string()
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
             hotkey: "Ctrl+Shift+T".to_string(),
+            ocr_hotkey: default_ocr_hotkey(),
+            ocr_lang: String::new(),
         }
     }
 }

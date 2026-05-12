@@ -222,6 +222,12 @@ const detectedLangLabel = computed(() => {
 const currentHotkey = ref('Ctrl+Shift+T');
 const recordingHotkey = ref(false);
 const hotkeyError = ref('');
+const currentOcrHotkey = ref('Ctrl+Shift+S');
+const recordingOcrHotkey = ref(false);
+const ocrHotkeyError = ref('');
+const ocrActive = ref(false);
+const ocrLang = ref('');
+const ocrLanguages = ref<{ tag: string; name: string }[]>([]);
 
 const {
   currentVersion,
@@ -235,9 +241,22 @@ const {
 
 onMounted(() => {
   invoke<string>('get_hotkey').then(h => { currentHotkey.value = h; });
+  invoke<string>('get_ocr_hotkey').then(h => { currentOcrHotkey.value = h; });
+  invoke<string>('get_ocr_lang').then(l => { ocrLang.value = l; });
+  invoke<{ tag: string; name: string }[]>('get_ocr_languages').then(langs => { ocrLanguages.value = langs; });
 
   listen('window-hidden', () => {
     sourceText.value = '';
+  });
+
+  listen<string>('ocr-text', (event) => {
+    sourceLang.value = 'auto';
+    sourceText.value = event.payload;
+    translate(event.payload, true);
+  });
+
+  listen('ocr-no-text', () => {
+    // briefly show a status message — reuse error channel
   });
 
   getCurrentWindow().onFocusChanged(({ payload: focused }) => {
@@ -278,6 +297,53 @@ async function captureHotkey(e: KeyboardEvent) {
 function onHotkeyKeydown(e: KeyboardEvent) {
   if (recordingHotkey.value) captureHotkey(e);
 }
+
+async function startOcr() {
+  ocrActive.value = true;
+  try {
+    await invoke('open_ocr_overlay');
+  } finally {
+    ocrActive.value = false;
+  }
+}
+
+function startRecordingOcr() {
+  recordingOcrHotkey.value = true;
+  ocrHotkeyError.value = '';
+}
+
+async function captureOcrHotkey(e: KeyboardEvent) {
+  e.preventDefault();
+  if (e.key === 'Escape') {
+    recordingOcrHotkey.value = false;
+    return;
+  }
+  const mods: string[] = [];
+  if (e.ctrlKey) mods.push('Ctrl');
+  if (e.altKey) mods.push('Alt');
+  if (e.shiftKey) mods.push('Shift');
+  if (e.metaKey) mods.push('Super');
+  if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
+  if (mods.length === 0) return;
+  const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  const shortcut = [...mods, key].join('+');
+  recordingOcrHotkey.value = false;
+  try {
+    await invoke('set_ocr_hotkey', { shortcut });
+    currentOcrHotkey.value = shortcut;
+    ocrHotkeyError.value = '';
+  } catch {
+    ocrHotkeyError.value = t('hotkeyFailed');
+  }
+}
+
+function onOcrHotkeyKeydown(e: KeyboardEvent) {
+  if (recordingOcrHotkey.value) captureOcrHotkey(e);
+}
+
+watch(ocrLang, (lang) => {
+  invoke('set_ocr_lang', { lang });
+});
 
 function relativeTime(ts: number): string {
   const rtf = new Intl.RelativeTimeFormat(locale.value, { numeric: 'auto' });
@@ -328,6 +394,14 @@ function clearAllHistory() {
           <LangSelect v-model="targetLang" :options="displayLanguages" />
           <div class="header-end-spacer" />
           <LangSelect v-model="engine" :options="ENGINE_OPTIONS" small />
+          <button class="btn-icon" :class="{ 'btn-ocr-active': ocrActive }" @click="startOcr" :title="t('ocrButton')">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <path d="M7 8h3M14 8h3"/>
+              <path d="M7 12h10"/>
+              <path d="M7 16h5"/>
+            </svg>
+          </button>
           <button class="btn-icon" @click="showHistory = true" :title="t('history')">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
@@ -403,6 +477,30 @@ function clearAllHistory() {
             </button>
             <div v-if="hotkeyError" class="hotkey-error">{{ hotkeyError }}</div>
           </div>
+        </div>
+        <div class="settings-row settings-row-bordered">
+          <label class="settings-label">{{ t('ocrShortcut') }}</label>
+          <div class="hotkey-field">
+            <button
+              class="hotkey-btn"
+              :class="{ recording: recordingOcrHotkey }"
+              @click="startRecordingOcr"
+              @keydown="onOcrHotkeyKeydown"
+              @blur="recordingOcrHotkey = false"
+            >
+              {{ recordingOcrHotkey ? t('hotkeyRecording') : currentOcrHotkey }}
+            </button>
+            <div v-if="ocrHotkeyError" class="hotkey-error">{{ ocrHotkeyError }}</div>
+          </div>
+        </div>
+        <div v-if="ocrLanguages.length" class="settings-row settings-row-bordered">
+          <label class="settings-label">{{ t('ocrLang') }}</label>
+          <select v-model="ocrLang" class="lang-select">
+            <option value="">{{ t('autoDetect') }}</option>
+            <option v-for="lang in ocrLanguages" :key="lang.tag" :value="lang.tag">
+              {{ lang.name }}
+            </option>
+          </select>
         </div>
         <div class="settings-row settings-row-bordered">
           <div class="settings-label-group">
@@ -1117,4 +1215,9 @@ kbd {
   transition: opacity 0.15s;
 }
 .history-item:hover .history-delete { opacity: 1; }
+
+.btn-ocr-active {
+  color: var(--primary);
+  animation: speak-pulse 1s ease-in-out infinite;
+}
 </style>
