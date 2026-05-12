@@ -109,6 +109,7 @@ pub fn run() {
             translate::translate_text,
             translate::translate_bing_text,
             translate::translate_mymemory_text,
+            translate::speak_tts,
             get_hotkey,
             set_hotkey,
             check_for_update,

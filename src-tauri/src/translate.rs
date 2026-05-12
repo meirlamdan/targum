@@ -238,3 +238,36 @@ pub async fn translate_text(text: String, target_lang: String, source_lang: Stri
         detected_lang,
     })
 }
+
+fn chunk_text(text: &str, max_len: usize) -> Vec<String> {
+    let mut chunks = Vec::new();
+    let mut current = String::new();
+    for word in text.split_whitespace() {
+        if !current.is_empty() && current.len() + 1 + word.len() > max_len {
+            chunks.push(std::mem::take(&mut current));
+        }
+        if !current.is_empty() { current.push(' '); }
+        current.push_str(word);
+    }
+    if !current.trim().is_empty() { chunks.push(current); }
+    chunks
+}
+
+#[tauri::command]
+pub async fn speak_tts(text: String, lang: String) -> Result<Vec<u8>, String> {
+    if text.trim().is_empty() { return Ok(vec![]); }
+    let client = reqwest::Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut audio: Vec<u8> = Vec::new();
+    for chunk in chunk_text(&text, 200) {
+        let bytes = client
+            .get("https://translate.googleapis.com/translate_tts")
+            .query(&[("ie", "UTF-8"), ("q", chunk.as_str()), ("tl", lang.as_str()), ("client", "gtx"), ("ttsspeed", "1")])
+            .send().await.map_err(|e| e.to_string())?
+            .bytes().await.map_err(|e| e.to_string())?;
+        audio.extend_from_slice(&bytes);
+    }
+    Ok(audio)
+}
