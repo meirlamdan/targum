@@ -59,51 +59,8 @@ jobs:
             - **macOS (Apple Silicon)**: `_aarch64.dmg`
           releaseDraft: false
           prerelease: false
+          uploadUpdaterJson: 'false'
           args: ${{ matrix.args }}
-
-      - name: Sign release artifact and save sig
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          set -e
-          TAG="${{ github.ref_name }}"
-          mkdir -p installers
-
-          if [[ "${{ matrix.platform }}" == "windows-latest" ]]; then
-            gh release download "$TAG" --repo meirlamdan/targum --pattern "*.exe" --dir installers
-            file=$(ls installers/*.exe | head -1)
-            sig_dest="win-sig.txt"
-          else
-            gh release download "$TAG" --repo meirlamdan/targum --pattern "*.app.tar.gz" --dir installers
-            file=$(ls installers/*.app.tar.gz | head -1)
-            sig_dest="macos-sig.txt"
-          fi
-
-          echo "Signing: $file"
-          printf '%s' "$TAURI_SIGNING_PRIVATE_KEY" > /tmp/tauri_key.pem
-          npx tauri signer sign "$file" -k /tmp/tauri_key.pem -p "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD"
-          rm -f /tmp/tauri_key.pem
-
-          echo "Sig content:"
-          cat "${file}.sig"
-          cp "${file}.sig" "$sig_dest"
-
-      - name: Upload Windows sig
-        if: matrix.platform == 'windows-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-sig
-          path: win-sig.txt
-
-      - name: Upload macOS sig
-        if: matrix.platform == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-sig
-          path: macos-sig.txt
 
   updater-json:
     needs: release
@@ -111,8 +68,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download sig artifacts
-        uses: actions/download-artifact@v4
+      - name: Download sig files from release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p sigs
+          gh release download "${{ github.ref_name }}" \
+            --repo meirlamdan/targum \
+            --pattern "*.exe.sig" \
+            --dir sigs
+          gh release download "${{ github.ref_name }}" \
+            --repo meirlamdan/targum \
+            --pattern "*.app.tar.gz.sig" \
+            --dir sigs
 
       - name: Generate and upload latest.json
         env:
@@ -122,8 +90,8 @@ jobs:
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
 
-          WIN_SIG=$(cat windows-sig/win-sig.txt)
-          MAC_SIG=$(cat macos-sig/macos-sig.txt)
+          WIN_SIG=$(cat sigs/*.exe.sig)
+          MAC_SIG=$(cat sigs/*.app.tar.gz.sig)
 
           WIN_URL=$(gh release view "${TAG}" --repo meirlamdan/targum --json assets \
             --jq '.assets[] | select(.name | endswith(".exe")) | .browserDownloadUrl' | head -1)
