@@ -17,8 +17,6 @@ jobs:
             args: ''
           - platform: macos-latest
             args: '--target aarch64-apple-darwin'
-          - platform: macos-13
-            args: '--target x86_64-apple-darwin'
 
     runs-on: ${{ matrix.platform }}
 
@@ -33,7 +31,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || matrix.platform == 'macos-13' && 'x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -59,7 +57,6 @@ jobs:
 
             - **Windows**: `_x64-setup.exe`
             - **macOS (Apple Silicon)**: `_aarch64.dmg`
-            - **macOS (Intel)**: `_x64.dmg`
           releaseDraft: false
           prerelease: false
           updaterJsonPreferNsis: true
