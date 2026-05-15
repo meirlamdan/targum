@@ -12,8 +12,7 @@ function normalizeLang(lang: string): string {
 
 const isTauri = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 
-// Web Speech API voice preload — only needed in web/browser mode
-if (!isTauri && typeof window !== 'undefined' && window.speechSynthesis) {
+if (typeof window !== 'undefined' && window.speechSynthesis) {
   window.speechSynthesis.getVoices()
   window.speechSynthesis.addEventListener('voiceschanged', () => {
     window.speechSynthesis.getVoices()
@@ -39,6 +38,22 @@ function getBestVoice(lang: string, preferredLocale?: string): SpeechSynthesisVo
   )
 }
 
+// Returns true only if there is a system voice that actually speaks the requested language.
+// Does not fall back to English — used to decide whether Web Speech or Google TTS is used.
+function hasVoiceForLang(lang: string, preferredLocale?: string): boolean {
+  const voices = window.speechSynthesis.getVoices()
+  if (!voices.length) return false
+  const base = lang.split('-')[0]
+  if (preferredLocale && preferredLocale.split('-')[0] === base) {
+    if (voices.some(v => v.lang === preferredLocale || v.lang.startsWith(preferredLocale + '-'))) return true
+  }
+  return (
+    voices.some(v => v.lang === lang) ||
+    voices.some(v => v.lang.startsWith(base + '-')) ||
+    voices.some(v => v.lang.split('-')[0] === base)
+  )
+}
+
 export function useSpeech() {
   const speaking = ref(false)
   const wordRange = ref<{ start: number; end: number } | null>(null)
@@ -50,7 +65,10 @@ export function useSpeech() {
     stop()
     speaking.value = true
 
-    if (isTauri) {
+    const normalizedLang = normalizeLang(lang)
+
+    // Tauri + no system voice for this language → Google TTS (audio only, no highlighting)
+    if (isTauri && !hasVoiceForLang(normalizedLang, preferredLocale)) {
       const ttsLang = normalizeLang(preferredLocale ?? lang)
       try {
         const bytes = await invoke<number[]>('speak_tts', { text, lang: ttsLang })
@@ -73,8 +91,8 @@ export function useSpeech() {
       return
     }
 
-    // Web/browser mode: Web Speech API
-    const normalizedLang = normalizeLang(lang)
+    // Web Speech API — browser mode, or Tauri when a matching system voice exists.
+    // onboundary events give exact per-word timing → perfect highlighting.
     const utterance = new SpeechSynthesisUtterance(text)
     const voice = getBestVoice(normalizedLang, preferredLocale)
     if (voice) {
@@ -99,11 +117,10 @@ export function useSpeech() {
   }
 
   function stop() {
+    window.speechSynthesis?.cancel()
     if (isTauri) {
       try { currentSource?.stop() } catch { /* already ended */ }
       currentSource = null
-    } else {
-      window.speechSynthesis?.cancel()
     }
     speaking.value = false
     wordRange.value = null
