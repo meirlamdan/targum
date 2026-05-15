@@ -70,3 +70,8 @@ No test or lint scripts are configured yet.
 - **CSP:** `tauri.conf.json` allows `https://translate.googleapis.com`. Bing API calls go through Rust/reqwest (not subject to browser CSP). Any new external domains called from the frontend need to be added to CSP.
 - **Platform support:** Windows and macOS. `selection.rs` uses `windows-sys` on Windows and `core-graphics` on macOS (both under `#[cfg(target_os)]`). Linux is not supported.
 - **State persistence:** `targetLang`, `engine`, `appLocale`, `englishAccent` in localStorage; hotkey in Rust `config.json` via `app.path().app_config_dir()`.
+
+## Commit Messages
+
+- Keep commit messages concise and direct - no verbose multi-paragraph descriptions
+- Do NOT include 'Generated with Claude Code' or co-author trailers unless explicitly requested
