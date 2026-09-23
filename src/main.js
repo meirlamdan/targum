@@ -234,7 +234,22 @@ try {
   $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($Path)) ([Windows.Storage.StorageFile])
   $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
   $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
-  $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+  # Windows OCR misses small text (a screenshot of one line of UI text comes
+  # back empty); upscaling it 2-3x makes it read cleanly.
+  $w = $decoder.PixelWidth; $h = $decoder.PixelHeight
+  $scale = if ($h -lt 300) { 3 } elseif ([Math]::Max($w, $h) -lt 2000) { 2 } else { 1 }
+  $max = [Windows.Media.Ocr.OcrEngine]::MaxImageDimension
+  while ($scale -gt 1 -and [Math]::Max($w, $h) * $scale -gt $max) { $scale-- }
+  $transform = New-Object Windows.Graphics.Imaging.BitmapTransform
+  $transform.ScaledWidth = [uint32]($w * $scale)
+  $transform.ScaledHeight = [uint32]($h * $scale)
+  $transform.InterpolationMode = [Windows.Graphics.Imaging.BitmapInterpolationMode]::Cubic
+  $bitmap = Await ($decoder.GetSoftwareBitmapAsync(
+    [Windows.Graphics.Imaging.BitmapPixelFormat]::Bgra8,
+    [Windows.Graphics.Imaging.BitmapAlphaMode]::Premultiplied,
+    $transform,
+    [Windows.Graphics.Imaging.ExifOrientationMode]::RespectExifOrientation,
+    [Windows.Graphics.Imaging.ColorManagementMode]::DoNotColorManage)) ([Windows.Graphics.Imaging.SoftwareBitmap])
   $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
   $lines = @($result.Lines | ForEach-Object { $_.Text })
   @{ ok = $true; text = ($lines -join "${'`'}n"); lang = $engine.RecognizerLanguage.LanguageTag } | ConvertTo-Json -Compress
