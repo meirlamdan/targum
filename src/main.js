@@ -204,6 +204,77 @@ function showWindow(app) {
   app.restore();
 }
 
+// --- OCR (Windows) ------------------------------------------------------------
+// tinyjs's own OCR (tiny.macos.ocr) is macOS-only — the page uses it there.
+// On Windows, call the built-in WinRT engine (Windows.Media.Ocr) through
+// PowerShell. It reads the languages whose OCR pack is installed (English
+// ships with Windows; there is no Hebrew pack).
+
+const OCR_PS1 = String.raw`
+param([string]$Path)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+  $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
+  $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation${'`'}1' })[0]
+function Await($op, [Type]$t) {
+  $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $task.Wait() | Out-Null; $task.Result
+}
+[void][Windows.Storage.StorageFile, Windows.Storage, ContentType = WindowsRuntime]
+[void][Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics, ContentType = WindowsRuntime]
+[void][Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime]
+try {
+  $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+  if (-not $engine) {
+    $lang = [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages | Select-Object -First 1
+    if ($lang) { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($lang) }
+  }
+  if (-not $engine) { throw 'No OCR language is installed in Windows' }
+  $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($Path)) ([Windows.Storage.StorageFile])
+  $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+  $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+  $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+  $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
+  $lines = @($result.Lines | ForEach-Object { $_.Text })
+  @{ ok = $true; text = ($lines -join "${'`'}n"); lang = $engine.RecognizerLanguage.LanguageTag } | ConvertTo-Json -Compress
+} catch {
+  @{ ok = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress
+}
+`;
+
+async function readAll(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return new TextDecoder().decode(out);
+}
+
+async function ocrWindows(path, app) {
+  const script = app.paths.data + '/ocr.ps1';
+  await tjs.makeDir(app.paths.data, { recursive: true });
+  // BOM so Windows PowerShell 5.1 reads the script as UTF-8
+  await tjs.writeFile(script, new TextEncoder().encode('﻿' + OCR_PS1));
+  // StorageFile.GetFileFromPathAsync rejects forward slashes
+  const winPath = path.replace(/\//g, '\\');
+  const p = app.spawnHidden(
+    ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, '-Path', winPath],
+    { stdin: 'ignore', stdout: 'pipe', stderr: 'ignore' },
+  );
+  const [out] = await Promise.all([readAll(p.stdout), p.wait()]);
+  let r;
+  try { r = JSON.parse(out.trim().split(/\r?\n/).pop()); } catch { throw new Error('OCR failed'); }
+  if (!r.ok) throw new Error(r.error || 'OCR failed');
+  return { text: r.text ?? '', lang: r.lang ?? '' };
+}
+
 // --- api --------------------------------------------------------------------
 
 export const api = {
@@ -223,6 +294,12 @@ export const api = {
     currentHotkey = combo;
     await app.store.set('hotkey', combo);
     return combo;
+  },
+
+  // Text from an image file (Windows). The page handles macOS itself.
+  async ocr({ path }, app) {
+    if (!IS_WIN) throw new Error('unsupported');
+    return ocrWindows(path, app);
   },
 
   async appInfo(_p, app) {

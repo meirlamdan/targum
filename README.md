@@ -14,6 +14,7 @@ Built with [tinyjs](https://tinyjs.app): a small JavaScript backend (txiki.js) a
 - **Text-to-speech** — Listen to the translation with word-by-word highlighting; falls back to Google TTS when there's no system voice for the language; US/British English accent toggle in settings
 - **20 languages** — See full list below
 - **RTL support** — Full right-to-left rendering for Hebrew, Arabic, and Persian
+- **Translate screenshots** — Paste a screenshot (`Win+Shift+S` / `Cmd+Ctrl+Shift+4`, then `Ctrl/Cmd+V`) or drop an image on the window; the text is read and translated. macOS uses Apple's Vision OCR (Hebrew included); Windows uses its built-in OCR, which covers the languages whose OCR pack is installed (English ships with Windows; there is no Hebrew pack)
 - **History** — The last 100 translations, click one to restore it
 - **System tray** — Lives in the tray, press the hotkey or click the tray icon to open
 - **UI localization** — Interface available in English, Hebrew, Russian, and French

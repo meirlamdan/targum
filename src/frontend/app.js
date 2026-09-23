@@ -98,6 +98,7 @@ const state = {
   englishAccent: load('englishAccent', 'en-US'),
   result: { translated: '', detected_lang: '' },
   loading: false,
+  ocrBusy: false,
   error: null,
   copied: false,
   view: 'main', // 'main' | 'settings' | 'history'
@@ -437,6 +438,59 @@ async function installUpdate() {
   }
 }
 
+// --- image → text (OCR) ------------------------------------------------------
+// macOS: tinyjs's own tiny.macos.ocr (Vision). Windows: the backend calls the
+// built-in Windows OCR (English + any installed OCR language pack). Linux:
+// not available.
+
+const IMAGE_RE = /\.(png|jpe?g|bmp|gif|tiff?)$/i;
+
+async function translateImage(path) {
+  if (tiny.system.isLinux()) {
+    showOcrError(t('ocrUnsupported'));
+    return;
+  }
+  state.ocrBusy = true;
+  state.error = null;
+  render();
+  try {
+    const { text } = IS_MAC ? await tiny.macos.ocr(path) : await tiny.api.call('ocr', { path });
+    state.ocrBusy = false;
+    const clean = (text ?? '').trim();
+    if (!clean) { showOcrError(t('ocrNoText')); return; }
+    state.sourceLang = 'auto';
+    setSourceText(clean, true);
+  } catch (e) {
+    state.ocrBusy = false;
+    showOcrError(t('ocrFailed') + (e?.message ? ` (${e.message})` : ''));
+  }
+}
+
+function showOcrError(msg) {
+  state.view = 'main';
+  state.sourceText = '';
+  sourceEl.value = '';
+  state.result = { translated: '', detected_lang: '' };
+  state.error = msg;
+  render();
+}
+
+// Paste a screenshot (Win+Shift+S / Cmd+Ctrl+Shift+4, then Ctrl/Cmd+V).
+// Plain text pastes go through untouched.
+document.addEventListener('paste', async (e) => {
+  const types = [...(e.clipboardData?.items ?? [])].map((i) => i.type);
+  if (!types.some((t) => t.startsWith('image/')) || types.includes('text/plain')) return;
+  e.preventDefault();
+  const clip = await tiny.clipboard.read();
+  if (clip.kind === 'image' && clip.image) translateImage(clip.image);
+});
+
+// Drop an image file on the window.
+tiny.win.onDrop((paths) => {
+  const img = paths.find((p) => IMAGE_RE.test(p));
+  if (img) translateImage(img);
+});
+
 // --- actions -----------------------------------------------------------------
 
 function canSwap() {
@@ -710,9 +764,11 @@ function render() {
   copyBtn.title = state.copied ? t('copiedTitle') : t('copy');
 
   // status bar
-  $('status-loading').hidden = !state.loading;
+  const busy = state.loading || state.ocrBusy;
+  $('status-loading').hidden = !busy;
+  $('status-loading-text').textContent = state.ocrBusy ? t('ocrReading') : t('translating');
   const hint = $('status-hint');
-  hint.hidden = state.loading;
+  hint.hidden = busy;
   const [before, after] = t('hintDesktop').split('{key}');
   hint.innerHTML = escapeHtml(before ?? '') + `<kbd>${escapeHtml(formatHotkey(state.hotkey))}</kbd>` + escapeHtml(after ?? '');
 

@@ -45,6 +45,7 @@ No test, lint, or npm scripts — there are no dependencies.
 - **Tray:** icon is embedded as base64 in `main.js` and written to the data dir (the tray needs a file path, and a built app has no project dir). Left-click toggles the window; menu has "Open Translator" and "Quit".
 - **Updates:** `update.check` / `update.install` against `https://github.com/meirlamdan/targum/releases/latest/download/manifest.json`. No download progress is reported, so the bar is indeterminate.
 - **Hotkey registration** is fire-and-forget in tinyjs — a combo held by another app fails silently.
+- **OCR (screenshot → text):** paste an image or drop an image file. macOS: `tiny.macos.ocr` (Vision) from the page. Windows: `ocr` api method runs the built-in WinRT OCR (`Windows.Media.Ocr`) through a PowerShell script (`OCR_PS1` in `main.js`, written to the data dir, run via `app.spawnHidden`). Paths must use backslashes there. Windows has no Hebrew OCR pack. Linux: not supported.
 - **Escape anything put into `innerHTML`** (`escapeHtml` in `app.js`) — the page holds an RPC channel to the backend.
 
 ## Commit Messages
