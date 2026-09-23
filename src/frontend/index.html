@@ -19,6 +19,17 @@
           <div id="target-lang"></div>
           <div class="header-end-spacer"></div>
           <div id="engine-select"></div>
+          <button class="btn-icon" id="btn-region">
+            <!-- screen region: selection corners around text lines -->
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 8V5a2 2 0 0 1 2-2h3"/>
+              <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+              <path d="M21 16v3a2 2 0 0 1-2 2h-3"/>
+              <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
+              <line x1="8" y1="10" x2="16" y2="10"/>
+              <line x1="8" y1="14" x2="13" y2="14"/>
+            </svg>
+          </button>
           <button class="btn-icon" id="btn-history" data-i18n-title="history">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"/>
@@ -73,6 +84,13 @@
           </div>
         </div>
         <div class="settings-row settings-row-bordered">
+          <label class="settings-label" data-i18n="ocrHotkey"></label>
+          <div class="hotkey-field">
+            <button class="hotkey-btn" id="hotkey-ocr-btn"></button>
+            <div class="hotkey-error" id="hotkey-ocr-error" hidden></div>
+          </div>
+        </div>
+        <div class="settings-row settings-row-bordered">
           <div class="settings-label-group">
             <span class="settings-label" data-i18n="updates"></span>
             <span class="version-badge" id="version-badge"></span>
@@ -123,7 +141,7 @@
     </main>
 
     <footer class="status-bar" id="status-bar">
-      <span class="status-loading" id="status-loading" hidden><span class="dot-pulse"></span><span data-i18n="translating"></span></span>
+      <span class="status-loading" id="status-loading" hidden><span class="dot-pulse"></span><span id="status-loading-text"></span></span>
       <span class="status-hint" id="status-hint"></span>
     </footer>
   </div>

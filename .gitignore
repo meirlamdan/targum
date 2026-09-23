@@ -5,7 +5,8 @@ dist/
 *.log
 
 # Claude Code internal settings
-.claude/
+.claude/*
+!.claude/skills/
 
 # Editor directories and files
 .vscode/

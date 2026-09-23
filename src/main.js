@@ -204,6 +204,227 @@ function showWindow(app) {
   app.restore();
 }
 
+// --- OCR (Windows) ------------------------------------------------------------
+// tinyjs's own OCR (tiny.macos.ocr) is macOS-only — the page uses it there.
+// On Windows, call the built-in WinRT engine (Windows.Media.Ocr) through
+// PowerShell. It reads the languages whose OCR pack is installed (English
+// ships with Windows; there is no Hebrew pack). A missing pack for the chosen
+// source language can be installed from the app (installOcrPack).
+
+const OCR_PS1 = String.raw`
+param([string]$Path, [string]$Crop, [string]$Lang)
+$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTask = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
+  $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and
+  $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation${'`'}1' })[0]
+function Await($op, [Type]$t) {
+  $task = $asTask.MakeGenericMethod($t).Invoke($null, @($op)); $task.Wait() | Out-Null; $task.Result
+}
+[void][Windows.Storage.StorageFile, Windows.Storage, ContentType = WindowsRuntime]
+[void][Windows.Graphics.Imaging.BitmapDecoder, Windows.Graphics, ContentType = WindowsRuntime]
+[void][Windows.Media.Ocr.OcrEngine, Windows.Foundation, ContentType = WindowsRuntime]
+try {
+  # -Lang "ru": the source language the user picked. Its pack may be missing
+  # (the page then offers to install it).
+  if ($Lang) {
+    $l = [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages |
+      Where-Object { $_.LanguageTag -like "$Lang*" } | Select-Object -First 1
+    if (-not $l) { @{ ok = $false; missing = $Lang } | ConvertTo-Json -Compress; exit }
+    $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($l)
+  } else {
+    $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromUserProfileLanguages()
+  }
+  if (-not $engine) {
+    $lang = [Windows.Media.Ocr.OcrEngine]::AvailableRecognizerLanguages | Select-Object -First 1
+    if ($lang) { $engine = [Windows.Media.Ocr.OcrEngine]::TryCreateFromLanguage($lang) }
+  }
+  if (-not $engine) { throw 'No OCR language is installed in Windows' }
+  # Crop (-Crop "x,y,w,h", pixels) and upscale with System.Drawing into a
+  # temp png first: Windows OCR misses small text (one line of UI text comes
+  # back empty), and 2-3x makes it read cleanly.
+  Add-Type -AssemblyName System.Drawing
+  $src = [System.Drawing.Bitmap]::FromFile($Path)
+  $cx = 0; $cy = 0; $w = $src.Width; $h = $src.Height
+  if ($Crop) {
+    $c = $Crop.Split(',') | ForEach-Object { [int]$_ }
+    $cx = [Math]::Max(0, $c[0]); $cy = [Math]::Max(0, $c[1])
+    $w = [Math]::Min($c[2], $src.Width - $cx); $h = [Math]::Min($c[3], $src.Height - $cy)
+  }
+  $scale = if ($h -lt 300) { 3 } elseif ([Math]::Max($w, $h) -lt 2000) { 2 } else { 1 }
+  $max = [Windows.Media.Ocr.OcrEngine]::MaxImageDimension
+  while ($scale -gt 1 -and [Math]::Max($w, $h) * $scale -gt $max) { $scale-- }
+  $dst = New-Object System.Drawing.Bitmap ([int]($w * $scale)), ([int]($h * $scale))
+  $g = [System.Drawing.Graphics]::FromImage($dst)
+  $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $g.DrawImage($src, (New-Object System.Drawing.Rectangle 0, 0, $dst.Width, $dst.Height), $cx, $cy, $w, $h, [System.Drawing.GraphicsUnit]::Pixel)
+  $g.Dispose(); $src.Dispose()
+  $tmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), 'targum-ocr-' + [guid]::NewGuid().ToString('N') + '.png')
+  $dst.Save($tmp, [System.Drawing.Imaging.ImageFormat]::Png); $dst.Dispose()
+
+  $file = Await ([Windows.Storage.StorageFile]::GetFileFromPathAsync($tmp)) ([Windows.Storage.StorageFile])
+  $stream = Await ($file.OpenAsync([Windows.Storage.FileAccessMode]::Read)) ([Windows.Storage.Streams.IRandomAccessStream])
+  $decoder = Await ([Windows.Graphics.Imaging.BitmapDecoder]::CreateAsync($stream)) ([Windows.Graphics.Imaging.BitmapDecoder])
+  $bitmap = Await ($decoder.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
+  $result = Await ($engine.RecognizeAsync($bitmap)) ([Windows.Media.Ocr.OcrResult])
+  $stream.Dispose(); Remove-Item $tmp -ErrorAction SilentlyContinue
+  $lines = @($result.Lines | ForEach-Object { $_.Text })
+  @{ ok = $true; text = ($lines -join "${'`'}n"); lang = $engine.RecognizerLanguage.LanguageTag } | ConvertTo-Json -Compress
+} catch {
+  @{ ok = $false; error = $_.Exception.Message } | ConvertTo-Json -Compress
+}
+`;
+
+async function readAll(stream) {
+  const reader = stream.getReader();
+  const chunks = [];
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+  }
+  const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let off = 0;
+  for (const c of chunks) { out.set(c, off); off += c.length; }
+  return new TextDecoder().decode(out);
+}
+
+// Runs a PowerShell script (kept in the data dir) with no console window and
+// returns the last line it printed.
+async function runPowerShell(app, name, source, args) {
+  const script = app.paths.data + '/' + name;
+  await tjs.makeDir(app.paths.data, { recursive: true });
+  // BOM so Windows PowerShell 5.1 reads the script as UTF-8
+  await tjs.writeFile(script, new TextEncoder().encode('﻿' + source));
+  const p = app.spawnHidden(
+    ['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, ...args],
+    { stdin: 'ignore', stdout: 'pipe', stderr: 'ignore' },
+  );
+  const [out] = await Promise.all([readAll(p.stdout), p.wait()]);
+  return out.trim().split(/\r?\n/).pop();
+}
+
+// Windows OCR packs (Language.OCR~~~<tag>) for Targum's source languages.
+// Hebrew, Ukrainian, Persian and Hindi have none.
+const OCR_PACKS = {
+  en: 'en-US', fr: 'fr-FR', ar: 'ar-SA', es: 'es-ES', ru: 'ru-RU', de: 'de-DE',
+  zh: 'zh-CN', pt: 'pt-BR', it: 'it-IT', ja: 'ja-JP', ko: 'ko-KR', nl: 'nl-NL',
+  pl: 'pl-PL', tr: 'tr-TR', sv: 'sv-SE', ro: 'ro-RO',
+};
+
+// lang: the source language, or null (auto) for the user's Windows languages.
+// A language without an installed pack comes back as { missing, installable }.
+async function ocrWindows(path, app, rect, lang) {
+  // StorageFile.GetFileFromPathAsync rejects forward slashes
+  const winPath = path.replace(/\//g, '\\');
+  const out = await runPowerShell(app, 'ocr.ps1', OCR_PS1, [
+    '-Path', winPath,
+    ...(rect ? ['-Crop', [rect.x, rect.y, rect.width, rect.height].map((n) => Math.round(n)).join(',')] : []),
+    ...(lang ? ['-Lang', lang] : []),
+  ]);
+  let r;
+  try { r = JSON.parse(out); } catch { throw new Error('OCR failed'); }
+  if (r.missing) return { text: '', missing: r.missing, installable: !!OCR_PACKS[r.missing] };
+  if (!r.ok) throw new Error(r.error || 'OCR failed');
+  return { text: r.text ?? '', lang: r.lang ?? '' };
+}
+
+// Installs a Windows OCR pack (a small download from Windows Update). Needs
+// admin rights, so it runs elevated: the user gets the UAC prompt.
+// Prints ok | cancelled (UAC declined) | failed.
+const INSTALL_OCR_PS1 = String.raw`
+param([string]$Name)
+$cmd = "try { Add-WindowsCapability -Online -Name '$Name' -ErrorAction Stop | Out-Null; exit 0 } catch { exit 1 }"
+$enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+$argv = "-NoProfile -NonInteractive -EncodedCommand $enc"
+try {
+  $p = Start-Process powershell.exe -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ArgumentList $argv -ErrorAction Stop
+} catch { 'cancelled'; exit }
+if ($p.ExitCode -eq 0) { 'ok' } else { 'failed' }
+`;
+
+async function installOcrPack(app, lang) {
+  const tag = OCR_PACKS[lang];
+  if (!tag) return 'failed';
+  const out = await runPowerShell(app, 'install-ocr.ps1', INSTALL_OCR_PS1, ['-Name', `Language.OCR~~~${tag}~0.0.1.0`]);
+  return ['ok', 'cancelled'].includes(out) ? out : 'failed';
+}
+
+// --- screen region → OCR -------------------------------------------------------
+// The user drags a rectangle with the mouse and Targum opens with the text.
+// Windows: our own overlay — capture the screen under the mouse, show it
+// frozen in a frameless full-screen window (snip.html), and OCR the dragged
+// rectangle (cropped in the OCR script). macOS: `screencapture -i`, which
+// saves the selection straight to a file with no editor window.
+
+const DEFAULT_OCR_HOTKEY = 'cmd+shift+o';
+let currentOcrHotkey = DEFAULT_OCR_HOTKEY;
+let capturing = false;
+let snip = null; // { path, width, height, done(rect | null) } while the overlay is up
+let lastCapture = null;
+
+async function captureRegion(app) {
+  if (capturing) return;
+  capturing = true;
+  try {
+    const state = await app.getWinState();
+    if (state?.visible) {
+      app.hide(); // don't cover what the user wants to select
+      await sleep(250);
+    }
+    const shot = IS_WIN ? await snipWindows(app) : await snipMac(app);
+    if (!shot) return; // cancelled
+    showWindow(app);
+    app.push('translate-image', shot);
+  } finally {
+    capturing = false;
+  }
+}
+
+async function snipWindows(app) {
+  if (lastCapture) tjs.remove(lastCapture).catch(() => {});
+  const [mouse, screens] = await Promise.all([app.mousePosition(), app.screens()]);
+  const scr = screens.find((s) => s.x === mouse?.screen?.x && s.y === mouse?.screen?.y)
+    ?? screens.find((s) => s.primary) ?? screens[0];
+  const cap = await app.captureScreen(scr.id);
+  lastCapture = cap.path;
+
+  const rect = await new Promise((resolve) => {
+    snip = { ...cap, done: resolve };
+    app.openWindow('snip', {
+      page: 'snip.html',
+      title: 'Targum',
+      size: `${scr.width}x${scr.height}`,
+      x: scr.x,
+      y: scr.y,
+      chrome: { frame: false },
+    });
+    const w = app.window('snip');
+    w.setAlwaysOnTop(true);
+    w.setFullscreen(true);
+    w.show();
+  });
+  snip = null;
+  app.window('snip').close();
+  if (!rect) return null;
+  // normalized 0..1 → pixels of the captured image
+  const px = {
+    x: Math.round(rect.x * cap.width),
+    y: Math.round(rect.y * cap.height),
+    width: Math.max(1, Math.round(rect.width * cap.width)),
+    height: Math.max(1, Math.round(rect.height * cap.height)),
+  };
+  return { path: cap.path, rect: px };
+}
+
+async function snipMac(app) {
+  const path = app.paths.temp + '/targum-region-' + Date.now() + '.png';
+  const p = tjs.spawn(['screencapture', '-i', '-x', path], { stdin: 'ignore', stdout: 'ignore', stderr: 'ignore' });
+  await p.wait();
+  try { await tjs.stat(path); return { path }; } catch { return null; } // Esc = no file
+}
+
 // --- api --------------------------------------------------------------------
 
 export const api = {
@@ -213,16 +434,47 @@ export const api = {
     return fn(text, targetLang, sourceLang);
   },
 
-  async getHotkey() {
-    return currentHotkey;
+  async getHotkeys() {
+    return { translate: currentHotkey, ocr: currentOcrHotkey };
   },
 
-  async setHotkey({ combo }, app) {
-    app.hotkey.unregister('translate');
-    app.hotkey.register('translate', combo);
-    currentHotkey = combo;
-    await app.store.set('hotkey', combo);
+  // id: 'translate' (copy selection) | 'ocr' (screen region)
+  async setHotkey({ id = 'translate', combo }, app) {
+    app.hotkey.unregister(id);
+    app.hotkey.register(id, combo);
+    if (id === 'ocr') currentOcrHotkey = combo;
+    else currentHotkey = combo;
+    await app.store.set(id === 'ocr' ? 'ocrHotkey' : 'hotkey', combo);
     return combo;
+  },
+
+  // The in-window button; runs detached so the page call returns at once.
+  async captureRegion(_p, app) {
+    captureRegion(app);
+    return true;
+  },
+
+  // snip.html: which screenshot to show, then the dragged rectangle
+  // (normalized 0..1) or null for Esc.
+  async snipInfo() {
+    return snip ? { path: snip.path } : null;
+  },
+  async snipDone({ rect }) {
+    snip?.done(rect ?? null);
+    return true;
+  },
+
+  // Text from an image file (Windows), optionally only from rect (pixels).
+  // The page handles macOS itself.
+  async ocr({ path, rect, lang }, app) {
+    if (!IS_WIN) throw new Error('unsupported');
+    return ocrWindows(path, app, rect, lang);
+  },
+
+  // → 'ok' | 'cancelled' | 'failed'
+  async installOcrLanguage({ lang }, app) {
+    if (!IS_WIN) return 'failed';
+    return installOcrPack(app, lang);
   },
 
   async appInfo(_p, app) {
@@ -233,9 +485,11 @@ export const api = {
 export async function init(app) {
   currentHotkey = (await app.store.get('hotkey')) ?? DEFAULT_HOTKEY;
   app.hotkey.register('translate', currentHotkey);
+  currentOcrHotkey = (await app.store.get('ocrHotkey')) ?? DEFAULT_OCR_HOTKEY;
+  app.hotkey.register('ocr', currentOcrHotkey);
 
   // same tray as Targum's tray.rs: the app icon in colour, left-click
-  // toggles the window, menu = Open Translator / Quit
+  // toggles the window, menu = Open Translator / Quit (+ screen region)
   app.tray.set({
     icon: await trayIconPath(app),
     template: false,
@@ -243,6 +497,7 @@ export async function init(app) {
     primaryAction: true,
     menu: [
       { id: 'open', label: 'Open Translator' },
+      { id: 'region', label: 'Translate Screen Region' },
       { id: 'quit', label: 'Quit' },
     ],
   });
@@ -254,6 +509,7 @@ export async function init(app) {
 }
 
 export async function onHotkey(id, app) {
+  if (id === 'ocr') return captureRegion(app);
   if (id !== 'translate') return;
   const text = await captureSelection(app);
   showWindow(app);
@@ -270,9 +526,15 @@ export async function onWindowState(info, app) {
   if (state && !state.visible) app.push('window-hidden', {});
 }
 
+// Overlay closed some other way (Alt+F4) — treat it as cancel.
+export function onWindowClosed(id) {
+  if (id === 'snip') snip?.done(null);
+}
+
 export async function onTray(id, app) {
   if (id === 'quit') return app.quit();
   if (id === 'open') return showWindow(app);
+  if (id === 'region') return captureRegion(app);
   // id === null: left-click on the icon toggles the window; hiding clears
   // the source text, as in Targum
   const state = await app.getWinState();
