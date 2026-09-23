@@ -33,7 +33,7 @@ No test, lint, or npm scripts — there are no dependencies.
 | `src/frontend/i18n.js` | UI strings (en, he, ru, fr) |
 | `src/frontend/style.css` | Styles |
 | `tinyjs.json` | App config: name, id, size, version, icon, update URL |
-| `.github/workflows/release.yml` | On `v*` tag: `tinyjs publish` on Windows + macOS, merge manifests, create the GitHub release |
+| `.github/workflows/release.yml` | On `v*` tag: `tinyjs publish` on Windows + macOS, merge manifests, create the GitHub release, bump the version on the gh-pages landing page |
 
 ## Key Details
 
