@@ -32,7 +32,7 @@ let locale = load('appLocale', detectLocale());
 function t(key, params) {
   const lookup = (msgs) => key.split('.').reduce((o, k) => o?.[k], msgs);
   let s = lookup(MESSAGES[locale]) ?? lookup(MESSAGES.en) ?? key;
-  if (params) for (const [k, v] of Object.entries(params)) s = s.replace(`{${k}}`, v);
+  if (params) for (const [k, v] of Object.entries(params)) s = s.replaceAll(`{${k}}`, v);
   return s;
 }
 
@@ -98,14 +98,14 @@ const state = {
   englishAccent: load('englishAccent', 'en-US'),
   result: { translated: '', detected_lang: '' },
   loading: false,
-  ocrBusy: false,
+  ocrBusy: false, // false | the status text while reading or installing
   error: null,
   copied: false,
   view: 'main', // 'main' | 'settings' | 'history'
   history: load('translationHistory', []),
-  hotkey: 'cmd+shift+t',
-  recordingHotkey: false,
-  hotkeyError: '',
+  hotkeys: { translate: 'cmd+shift+t', ocr: 'cmd+shift+o' },
+  recordingHotkey: null, // null | 'translate' | 'ocr'
+  hotkeyErrors: { translate: '', ocr: '' },
   version: '',
   update: { status: 'idle', latest: '', error: '' },
   speakingPanel: null, // 'source' | 'target' | null
@@ -384,9 +384,9 @@ function keyFromCode(code) {
   return NAMED_KEYS[code] ?? null;
 }
 
-async function captureHotkey(e) {
+async function captureHotkey(id, e) {
   e.preventDefault();
-  if (e.key === 'Escape') { state.recordingHotkey = false; render(); return; }
+  if (e.key === 'Escape') { state.recordingHotkey = null; render(); return; }
   if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
   const mods = [];
   if (IS_MAC) {
@@ -400,13 +400,15 @@ async function captureHotkey(e) {
   if (e.shiftKey) mods.push('shift');
   if (!mods.length) return;
   const key = keyFromCode(e.code);
-  state.recordingHotkey = false;
-  if (!key) { state.hotkeyError = t('hotkeyFailed'); render(); return; }
+  state.recordingHotkey = null;
+  const combo = [...mods, key].join('+');
+  const other = id === 'ocr' ? 'translate' : 'ocr';
+  if (!key || combo === state.hotkeys[other]) { state.hotkeyErrors[id] = t('hotkeyFailed'); render(); return; }
   try {
-    state.hotkey = await tiny.api.call('setHotkey', { combo: [...mods, key].join('+') });
-    state.hotkeyError = '';
+    state.hotkeys[id] = await tiny.api.call('setHotkey', { id, combo });
+    state.hotkeyErrors[id] = '';
   } catch {
-    state.hotkeyError = t('hotkeyFailed');
+    state.hotkeyErrors[id] = t('hotkeyFailed');
   }
   render();
 }
@@ -440,30 +442,81 @@ async function installUpdate() {
 
 // --- image → text (OCR) ------------------------------------------------------
 // macOS: tinyjs's own tiny.macos.ocr (Vision). Windows: the backend calls the
-// built-in Windows OCR (English + any installed OCR language pack). Linux:
-// not available.
+// built-in Windows OCR (English + any installed OCR language pack). With a
+// source language picked, Windows reads that language, and offers to install
+// its pack when missing. Linux: not available.
 
 const IMAGE_RE = /\.(png|jpe?g|bmp|gif|tiff?)$/i;
 
-async function translateImage(path) {
+async function translateImage(path, rect) {
   if (tiny.system.isLinux()) {
     showOcrError(t('ocrUnsupported'));
     return;
   }
-  state.ocrBusy = true;
-  state.error = null;
-  render();
+  setOcrBusy(t('ocrReading'));
   try {
-    const { text } = IS_MAC ? await tiny.macos.ocr(path) : await tiny.api.call('ocr', { path });
+    let r;
+    if (IS_MAC) r = await tiny.macos.ocr(path);
+    else {
+      const lang = state.sourceLang === 'auto' ? null : state.sourceLang;
+      r = await tiny.api.call('ocr', { path, rect, lang });
+      if (r.missing) {
+        if (!(await installOcrLanguage(r.missing, r.installable))) return;
+        setOcrBusy(t('ocrReading'));
+        r = await tiny.api.call('ocr', { path, rect, lang });
+        if (r.missing) { showOcrError(t('ocrLangMissing', { lang: langName(lang) })); return; }
+      }
+    }
     state.ocrBusy = false;
-    const clean = (text ?? '').trim();
+    const clean = (r.text ?? '').trim();
     if (!clean) { showOcrError(t('ocrNoText')); return; }
-    state.sourceLang = 'auto';
     setSourceText(clean, true);
   } catch (e) {
     state.ocrBusy = false;
     showOcrError(t('ocrFailed') + (e?.message ? ` (${e.message})` : ''));
   }
+}
+
+function setOcrBusy(msg) {
+  state.ocrBusy = msg;
+  state.error = null;
+  render();
+}
+
+const langName = (code) => t(`langNames.${code}`);
+
+// Windows has no OCR pack for the language → ask to install it (UAC prompt).
+// true = installed, read again; false = an error is already shown.
+async function installOcrLanguage(code, installable) {
+  const lang = langName(code);
+  state.ocrBusy = false;
+  render();
+  if (!installable) {
+    showOcrError(t('ocrLangUnsupported', { lang }));
+    return false;
+  }
+  const install = await tiny.dialog.confirm(t('ocrInstallTitle', { lang }), {
+    detail: t('ocrInstallDetail', { lang }),
+    ok: t('ocrInstall'),
+    cancel: t('cancel'),
+  });
+  if (!install) {
+    showOcrError(t('ocrLangMissing', { lang }));
+    return false;
+  }
+  setOcrBusy(t('ocrInstalling', { lang }));
+  const res = await tiny.api.call('installOcrLanguage', { lang: code });
+  if (res === 'ok') return true;
+  showOcrError(t(res === 'cancelled' ? 'ocrLangMissing' : 'ocrInstallFailed', { lang }));
+  if (res === 'failed') {
+    const open = await tiny.dialog.confirm(t('ocrInstallFailed', { lang }), {
+      detail: t('ocrInstallManual', { lang }),
+      ok: t('openSettings'),
+      cancel: t('close'),
+    });
+    if (open) tiny.app.shell.open('ms-settings:regionlanguage');
+  }
+  return false;
 }
 
 function showOcrError(msg) {
@@ -540,7 +593,7 @@ function swapLanguages() {
 
 function setView(view) {
   state.view = view;
-  if (view !== 'settings') state.recordingHotkey = false;
+  if (view !== 'settings') state.recordingHotkey = null;
   render();
 }
 
@@ -613,16 +666,20 @@ for (const btn of document.querySelectorAll('[data-accent]')) {
   });
 }
 
-const hotkeyBtn = $('hotkey-btn');
-hotkeyBtn.addEventListener('click', () => {
-  state.recordingHotkey = true;
-  state.hotkeyError = '';
-  render();
-});
-hotkeyBtn.addEventListener('keydown', (e) => { if (state.recordingHotkey) captureHotkey(e); });
-hotkeyBtn.addEventListener('blur', () => {
-  if (state.recordingHotkey) { state.recordingHotkey = false; render(); }
-});
+const hotkeyButtons = { translate: $('hotkey-btn'), ocr: $('hotkey-ocr-btn') };
+for (const [id, btn] of Object.entries(hotkeyButtons)) {
+  btn.addEventListener('click', () => {
+    state.recordingHotkey = id;
+    state.hotkeyErrors[id] = '';
+    render();
+  });
+  btn.addEventListener('keydown', (e) => { if (state.recordingHotkey === id) captureHotkey(id, e); });
+  btn.addEventListener('blur', () => {
+    if (state.recordingHotkey === id) { state.recordingHotkey = null; render(); }
+  });
+}
+
+$('btn-region').addEventListener('click', () => tiny.api.call('captureRegion'));
 
 $('view-history').addEventListener('click', (e) => {
   const item = e.target.closest('.history-item');
@@ -766,21 +823,25 @@ function render() {
   // status bar
   const busy = state.loading || state.ocrBusy;
   $('status-loading').hidden = !busy;
-  $('status-loading-text').textContent = state.ocrBusy ? t('ocrReading') : t('translating');
+  $('status-loading-text').textContent = state.ocrBusy || t('translating');
   const hint = $('status-hint');
   hint.hidden = busy;
   const [before, after] = t('hintDesktop').split('{key}');
-  hint.innerHTML = escapeHtml(before ?? '') + `<kbd>${escapeHtml(formatHotkey(state.hotkey))}</kbd>` + escapeHtml(after ?? '');
+  hint.innerHTML = escapeHtml(before ?? '') + `<kbd>${escapeHtml(formatHotkey(state.hotkeys.translate))}</kbd>` + escapeHtml(after ?? '');
+  $('btn-region').title = `${t('captureRegion')} (${formatHotkey(state.hotkeys.ocr)})`;
 
   // settings
   for (const btn of document.querySelectorAll('[data-accent]')) {
     btn.classList.toggle('active', btn.dataset.accent === state.englishAccent);
   }
-  hotkeyBtn.classList.toggle('recording', state.recordingHotkey);
-  hotkeyBtn.textContent = state.recordingHotkey ? t('hotkeyRecording') : formatHotkey(state.hotkey);
-  const hkErr = $('hotkey-error');
-  hkErr.hidden = !state.hotkeyError;
-  hkErr.textContent = state.hotkeyError;
+  for (const [id, btn] of Object.entries(hotkeyButtons)) {
+    const recording = state.recordingHotkey === id;
+    btn.classList.toggle('recording', recording);
+    btn.textContent = recording ? t('hotkeyRecording') : formatHotkey(state.hotkeys[id]);
+    const err = $(id === 'ocr' ? 'hotkey-ocr-error' : 'hotkey-error');
+    err.hidden = !state.hotkeyErrors[id];
+    err.textContent = state.hotkeyErrors[id];
+  }
   renderUpdate();
 
   if (state.view === 'history') renderHistory();
@@ -797,6 +858,12 @@ tiny.api.on('translate-selection', ({ text }) => {
   setSourceText(text, true);
 });
 
+// Screen region: the user dragged a rectangle; OCR it and translate.
+tiny.api.on('translate-image', ({ path, rect }) => {
+  state.view = 'main';
+  translateImage(path, rect);
+});
+
 tiny.api.on('window-hidden', () => {
   stopSpeaking();
   setSourceText('');
@@ -808,7 +875,7 @@ tiny.win.onState(({ focused }) => {
 
 tiny.win.setMinSize(400, 240);
 
-tiny.api.call('getHotkey').then((h) => { state.hotkey = h; render(); });
+tiny.api.call('getHotkeys').then((h) => { state.hotkeys = h; render(); });
 tiny.api.call('appInfo').then(({ version }) => { state.version = version; render(); });
 
 render();

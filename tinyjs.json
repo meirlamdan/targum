@@ -7,6 +7,7 @@
   "icon": "icon.png",
   "minTinyjsVersion": "0.34.0",
   "activation": "accessory",
+  "readAccess": true,
   "update": {
     "url": "https://github.com/meirlamdan/targum/releases/latest/download/manifest.json"
   }

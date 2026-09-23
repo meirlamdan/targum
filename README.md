@@ -14,7 +14,8 @@ Built with [tinyjs](https://tinyjs.app): a small JavaScript backend (txiki.js) a
 - **Text-to-speech** — Listen to the translation with word-by-word highlighting; falls back to Google TTS when there's no system voice for the language; US/British English accent toggle in settings
 - **20 languages** — See full list below
 - **RTL support** — Full right-to-left rendering for Hebrew, Arabic, and Persian
-- **Translate screenshots** — Paste a screenshot (`Win+Shift+S` / `Cmd+Ctrl+Shift+4`, then `Ctrl/Cmd+V`) or drop an image on the window; the text is read and translated. macOS uses Apple's Vision OCR (Hebrew included); Windows uses its built-in OCR, which covers the languages whose OCR pack is installed (English ships with Windows; there is no Hebrew pack)
+- **Translate a screen region** — Press `Ctrl+Shift+O` (`Cmd+Shift+O` on macOS, configurable), click the region button, or pick "Translate Screen Region" in the tray, then drag a rectangle with the mouse; the text in it is read and translated
+- **Translate screenshots** — Paste a screenshot (`Win+Shift+S` / `Cmd+Ctrl+Shift+4`, then `Ctrl/Cmd+V`) or drop an image on the window; the text is read and translated by the system's own OCR. See [Reading Text From Images](#reading-text-from-images-ocr) for the languages
 - **History** — The last 100 translations, click one to restore it
 - **System tray** — Lives in the tray, press the hotkey or click the tray icon to open
 - **UI localization** — Interface available in English, Hebrew, Russian, and French
@@ -69,6 +70,27 @@ Releases are built by GitHub Actions when a `v*` tag is pushed.
 | Chinese | zh | | Ukrainian | uk |
 | Persian | fa | | Hindi | hi |
 | Swedish | sv | | Romanian | ro |
+
+## Reading Text From Images (OCR)
+
+Screenshots and screen regions are read by the operating system's own text recognition. Nothing is sent online until the text is translated.
+
+**Windows** uses the built-in Windows OCR. It reads a language only when that language's Windows OCR pack is installed.
+
+| Languages | Status |
+|-----------|--------|
+| English | Installed with Windows |
+| French, Arabic, Spanish, Russian, German, Chinese, Portuguese, Italian, Japanese, Korean, Dutch, Polish, Turkish, Swedish, Romanian | A free Windows pack, which Targum can install for you |
+| Hebrew, Ukrainian, Persian, Hindi | Not supported: Windows has no OCR pack for them |
+
+- With the source language on **Auto-detect**, Windows reads the image with the OCR languages of your Windows language list, or English. Targum doesn't offer an install in this mode.
+- If you choose a source language whose pack isn't installed, Targum asks whether to install it. Installing needs administrator approval (the Windows UAC prompt) and a small download from Microsoft. The image is then read again automatically.
+- If you cancel, Targum tells you that the pack isn't installed. If the install fails (for example, with no internet connection or when updates are blocked by an organization), Targum offers to open Windows language settings. There, add the language and install **Optical character recognition** in its options.
+- If you choose Hebrew, Ukrainian, Persian or Hindi, Targum explains that Windows can't read that language and suggests Auto-detect for English.
+
+**macOS** uses Apple's built-in text recognition (Vision). There are no packs to install, and the source-language choice doesn't change how the image is read. English works. The other languages depend on macOS, and Hebrew isn't guaranteed.
+
+**Linux:** not supported.
 
 ## Hotkey Configuration
 
