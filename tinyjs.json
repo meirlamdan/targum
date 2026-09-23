@@ -1,0 +1,13 @@
+{
+  "name": "targum",
+  "title": "Targum",
+  "size": "680x420",
+  "id": "com.meir.targum",
+  "version": "0.2.0",
+  "icon": "icon.png",
+  "minTinyjsVersion": "0.34.0",
+  "activation": "accessory",
+  "update": {
+    "url": "https://github.com/meirlamdan/targum/releases/latest/download/manifest.json"
+  }
+}

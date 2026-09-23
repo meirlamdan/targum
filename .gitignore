@@ -1,31 +1,13 @@
-# Logs
-logs
+# tinyjs build output
+dist/
+.build/
+
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
-
-node_modules
-dist
-dist-ssr
-*.local
-
-# Rust build artifacts
-src-tauri/target/
 
 # Claude Code internal settings
 .claude/
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
+.vscode/
 .idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-tauri-action/

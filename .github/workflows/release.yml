@@ -6,64 +6,72 @@ on:
       - 'v*'
 
 jobs:
-  release:
-    permissions:
-      contents: write
+  build:
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: windows-latest
-            args: ''
+            os: win
           - platform: macos-latest
-            args: '--target aarch64-apple-darwin'
+            os: mac
 
     runs-on: ${{ matrix.platform }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - name: Install tinyjs (Windows)
+        if: matrix.os == 'win'
+        shell: pwsh
+        run: |
+          irm https://tinyjs.app/install.ps1 | iex
+          "$env:LOCALAPPDATA\tinyjs" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+
+      - name: Install tinyjs (macOS)
+        if: matrix.os == 'mac'
+        run: |
+          curl -fsSL https://tinyjs.app/install | sh
+          echo "$HOME/.tinyjs" >> "$GITHUB_PATH"
+
+      # Builds the app, packs it, and writes a per-OS manifest.json
+      - name: Build and pack
+        run: tinyjs publish
+
+      - uses: actions/upload-artifact@v4
         with:
-          node-version: lts/*
+          name: publish-${{ matrix.os }}
+          path: dist/publish/
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
 
-      - name: Rust cache
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
+      # One manifest for every OS: macOS owns url/sha256, Windows the "win" block
+      - name: Merge update manifests
+        run: |
+          jq -s '.[0] * .[1]' publish-mac/manifest.json publish-win/manifest.json > manifest.json
+          cat manifest.json
 
-      - name: Install frontend dependencies
-        run: npm install
-
-      - name: Normalize signing key
-        shell: bash
+      - name: Create release
         env:
-          TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: printf 'TAURI_SIGNING_PRIVATE_KEY=%s\n' "$(printf '%s' "$TAURI_KEY" | tr -d '\r\n')" >> "$GITHUB_ENV"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          cat > notes.md <<EOF
+          ## Download
 
-      - name: Build and publish release
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ env.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Targum ${{ github.ref_name }}'
-          releaseBody: |
-            ## Download
-
-            Choose the file for your operating system below.
-
-            - **Windows**: `_x64-setup.exe`
-            - **macOS (Apple Silicon)**: `_aarch64.dmg`
-          releaseDraft: false
-          prerelease: false
-          updaterJsonPreferNsis: 'true'
-          args: ${{ matrix.args }}
+          | Platform | File |
+          |----------|------|
+          | Windows 10/11 | \`targum-${VERSION}-win.zip\` — unzip and run \`targum.exe\` |
+          | macOS 14+ | \`targum-${VERSION}.zip\` — unzip and move \`Targum.app\` to Applications |
+          EOF
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Targum $GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            publish-win/*.zip publish-mac/*.zip manifest.json
