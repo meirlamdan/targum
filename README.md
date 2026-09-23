@@ -5,15 +5,18 @@
 
 Targum is a lightweight desktop app for instant text translation. Select any text anywhere on your screen, press a global hotkey, and get the translation in a floating window — without switching apps.
 
+Built with [tinyjs](https://tinyjs.app): a small JavaScript backend (txiki.js) and the system webview, with no framework and no npm dependencies. The app is about 6 MB.
+
 ## Features
 
 - **Global hotkey** — Select text in any app, press `Ctrl+Shift+T` (Windows) or `Cmd+Shift+T` (macOS) to translate instantly (configurable)
 - **Three translation engines** — Google Translate, Bing Translator, and MyMemory, selectable per-session
-- **Text-to-speech** — Listen to the translation with word-by-word highlighting; US/British English accent toggle in settings
+- **Text-to-speech** — Listen to the translation with word-by-word highlighting; falls back to Google TTS when there's no system voice for the language; US/British English accent toggle in settings
 - **20 languages** — See full list below
 - **RTL support** — Full right-to-left rendering for Hebrew, Arabic, and Persian
+- **History** — The last 100 translations, click one to restore it
 - **System tray** — Lives in the tray, press the hotkey or click the tray icon to open
-- **UI localization** — Interface available in English and Hebrew
+- **UI localization** — Interface available in English, Hebrew, Russian, and French
 
 ## Screenshot
 <img width="784" height="374" alt="image" src="https://github.com/user-attachments/assets/57afaccc-1d90-4712-a315-5b5912ad451d" />
@@ -25,28 +28,31 @@ Go to the [Releases](https://github.com/meirlamdan/targum/releases) page and dow
 
 | Platform | File |
 |----------|------|
-| Windows 10/11 | `Targum_x.x.x_x64-setup.exe` |
-| macOS (Apple Silicon) | `Targum_x.x.x_aarch64.dmg` |
-| macOS (Intel) | `Targum_x.x.x_x64.dmg` |
+| Windows 10/11 | `targum-x.x.x-win.zip` — unzip and run `targum.exe` |
+| macOS 14+ | `targum-x.x.x.zip` — unzip and move `Targum.app` to Applications |
 
-No additional dependencies required.
+No additional dependencies required. On macOS, copying the selected text needs Accessibility permission.
 
 ## Development
 
-**Requirements:** [Node.js](https://nodejs.org/) v18+, [Rust](https://rustup.rs/) stable
+**Requirements:** [tinyjs](https://tinyjs.app)
 
 ```bash
-# Install dependencies
-npm install
+# Install tinyjs (once)
+irm https://tinyjs.app/install.ps1 | iex      # Windows (PowerShell)
+curl -fsSL https://tinyjs.app/install | sh    # macOS / Linux
 
 # Run in development mode (hot-reload)
-npm run tauri dev
+tinyjs dev
 
-# Build production installer
-npm run tauri build
+# Build the app (dist/)
+tinyjs build
+
+# Build + zip + update manifest (dist/publish/)
+tinyjs publish
 ```
 
-The installer will be output to `src-tauri/target/release/bundle/`.
+Releases are built by GitHub Actions when a `v*` tag is pushed.
 
 ## Supported Languages
 

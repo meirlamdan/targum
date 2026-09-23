@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Targum</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="app-header">
+      <!-- Normal mode -->
+      <div class="hdr-mode" id="hdr-main">
+        <div class="header-start">
+          <div id="source-lang"></div>
+        </div>
+        <button class="btn-swap" id="btn-swap" data-i18n-title="swapLanguages">⇄</button>
+        <div class="header-end">
+          <div id="target-lang"></div>
+          <div class="header-end-spacer"></div>
+          <div id="engine-select"></div>
+          <button class="btn-icon" id="btn-history" data-i18n-title="history">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </button>
+          <button class="btn-icon" id="btn-settings" data-i18n-title="settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- History / settings mode -->
+      <div class="hdr-mode" id="hdr-sub" hidden>
+        <button class="btn-icon btn-back" id="btn-back" data-i18n-title="back">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+        <span class="app-title" id="sub-title"></span>
+        <button class="btn-clear-history" id="btn-clear-history" data-i18n="clearHistory" hidden></button>
+        <div class="header-spacer" id="sub-spacer"></div>
+      </div>
+    </header>
+
+    <!-- Settings content -->
+    <div class="settings-content" id="view-settings" hidden>
+      <div class="settings-group">
+        <div class="settings-row">
+          <label class="settings-label" data-i18n="defaultLang"></label>
+          <div id="default-lang"></div>
+        </div>
+        <div class="settings-row settings-row-bordered">
+          <label class="settings-label" for="app-lang" data-i18n="appLanguage"></label>
+          <select id="app-lang" class="lang-select"></select>
+        </div>
+        <div class="settings-row settings-row-bordered">
+          <label class="settings-label" data-i18n="englishAccent"></label>
+          <div class="engine-toggle">
+            <button class="btn-engine" data-accent="en-US" data-i18n="accentAmerican"></button>
+            <button class="btn-engine" data-accent="en-GB" data-i18n="accentBritish"></button>
+          </div>
+        </div>
+        <div class="settings-row settings-row-bordered">
+          <label class="settings-label" data-i18n="hotkey"></label>
+          <div class="hotkey-field">
+            <button class="hotkey-btn" id="hotkey-btn"></button>
+            <div class="hotkey-error" id="hotkey-error" hidden></div>
+          </div>
+        </div>
+        <div class="settings-row settings-row-bordered">
+          <div class="settings-label-group">
+            <span class="settings-label" data-i18n="updates"></span>
+            <span class="version-badge" id="version-badge"></span>
+          </div>
+          <div class="update-actions" id="update-actions"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- History content -->
+    <div class="settings-content" id="view-history" hidden></div>
+
+    <main class="panels" id="view-main">
+      <!-- Source panel -->
+      <div class="panel source-panel">
+        <div class="panel-toolbar">
+          <span class="panel-label">
+            <span data-i18n="source"></span>
+            <span class="detected-lang" id="detected-lang"></span>
+          </span>
+          <div class="toolbar-actions">
+            <button class="btn-speak" id="speak-source" data-i18n-title="speak" hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/><path d="M19 12a7 7 0 0 0-5-6.71v1.52A5.5 5.5 0 0 1 17.5 12a5.5 5.5 0 0 1-3.5 5.19v1.52A7 7 0 0 0 19 12z"/></svg>
+            </button>
+            <button class="btn-clear" id="btn-clear" data-i18n-title="clear" hidden>✕</button>
+          </div>
+        </div>
+        <textarea class="panel-textarea" id="source-text" data-i18n-placeholder="placeholder" spellcheck="false" autofocus></textarea>
+        <div class="speak-overlay" id="overlay-source" hidden></div>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!-- Translation panel -->
+      <div class="panel target-panel">
+        <div class="panel-toolbar">
+          <span class="panel-label" data-i18n="translation"></span>
+          <div class="toolbar-actions">
+            <button class="btn-speak" id="speak-target" data-i18n-title="speak" hidden>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3z"/><path d="M16.5 12A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/><path d="M19 12a7 7 0 0 0-5-6.71v1.52A5.5 5.5 0 0 1 17.5 12a5.5 5.5 0 0 1-3.5 5.19v1.52A7 7 0 0 0 19 12z"/></svg>
+            </button>
+            <button class="btn-copy" id="btn-copy" hidden></button>
+          </div>
+        </div>
+        <textarea class="panel-textarea target-textarea" id="target-text" readonly></textarea>
+        <div class="speak-overlay" id="overlay-target" hidden></div>
+      </div>
+    </main>
+
+    <footer class="status-bar" id="status-bar">
+      <span class="status-loading" id="status-loading" hidden><span class="dot-pulse"></span><span data-i18n="translating"></span></span>
+      <span class="status-hint" id="status-hint"></span>
+    </footer>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
